@@ -609,7 +609,7 @@ MonoBehaviour:
   num: 0
   total: 0
   particle: {fileID: 2069262911933955062}
-  checkPointSound: {fileID: 8300000, guid: b71f391c19eef0147911df58b4d28dc1, type: 3}
+  checkPointSound: {fileID: 8300000, guid: 064b27964423aca49949157b0d8406ef, type: 3}
 --- !u!1 &3559524906078245104
 GameObject:
   m_ObjectHideFlags: 0

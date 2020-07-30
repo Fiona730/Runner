@@ -10,7 +10,10 @@ public class Hexagon : MonoBehaviour
     //int num_z = -1;
     //float axis_x;
     //float axis_z;
-    Scene.hexNum hexNum;
+    Scene.hexNum hexNum = new Scene.hexNum{
+        num_x = -1,
+        num_z = -1
+    };
     Scene.hexAxis hexA;
 
     Scene.hexNum[] neighbour = new Scene.hexNum[6]; // start from left up hexagon, clockwise

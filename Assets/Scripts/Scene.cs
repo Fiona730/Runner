@@ -6,7 +6,7 @@ public class Scene : MonoBehaviour
 {
     public const float xDistanceHex = 1.1f;
     public const float zDistanceHex = 1.73205080757f / 2 * 1.1f; //Mathf.Sqrt(3) = 1.73205080757
-    public const int areaLength = 50;
+    public const int areaLength = 75;
     public static GameObject[] map;
     public static bool[] mapOccupied;
     public struct hexNum

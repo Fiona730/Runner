@@ -18,17 +18,45 @@ public class PlayerHUD : MonoBehaviour
     public GameObject gameStartPanel;
     public GameObject gameEndPanel;
     public GameObject gameCompletePanel;
+    
     InputField randomNum;
+    int num;
+    GameObject Env, Level;
+    AudioSource backGroundAudio;
+
     private void Awake()
     {
         character = FindObjectOfType<PlayerCharacter>();
         controller = FindObjectOfType<PlayerController>();
         randomNum = GetComponentInChildren<InputField>();
+        backGroundAudio = FindObjectOfType<AudioSource>();
+    }
+
+    public void OnClick_StartNewGame()
+    {
+        UnityEngine.SceneManagement.SceneManager.LoadScene("SampleScene");
     }
 
     public void OnClick_RestartGame()
     {
-        UnityEngine.SceneManagement.SceneManager.LoadScene("SampleScene");
+        gameEndPanel.SetActive(false);
+        gameCompletePanel.SetActive(false);
+        goldCount.gameObject.SetActive(true);
+        time.gameObject.SetActive(true);
+
+        Destroy(Level);
+        Random.InitState(num);
+        Level = new GameObject ("Level");
+        Level.transform.parent = Env.transform;
+        Level.AddComponent<GenerateScene>();
+        Destroy(Level.GetComponent("GenerateScene"));
+        character.gameObject.SetActive(true);
+        character.isAlive = true;
+        character.recoverBegin();
+        character.particle[4].Stop();
+        controller.Initialize();
+        backGroundAudio.Stop();
+        backGroundAudio.Play();
     }
 
     public void OnClick_ContinueGameFromCheckpoint()
@@ -36,8 +64,10 @@ public class PlayerHUD : MonoBehaviour
         gameEndPanel.SetActive(false);
         goldCount.gameObject.SetActive(true);
         time.gameObject.SetActive(true);
-        character.recoverTransform();
+        character.isAlive = true;
+        character.recoverCheckpoint();
         controller.Initialize();
+        backGroundAudio.UnPause();
     }
 
     public void OnClick_GetInputNumber()
@@ -46,16 +76,17 @@ public class PlayerHUD : MonoBehaviour
         goldCount.gameObject.SetActive(true);
         time.gameObject.SetActive(true);
         
-        int num = int.Parse(randomNum.text);
+        num = int.Parse(randomNum.text);
         Random.InitState(num);
-        GameObject Env = GameObject.Find("Env");
-        GameObject Level = new GameObject ("Level");
+        Env = GameObject.Find("Env");
+        Level = new GameObject ("Level");
         Level.transform.parent = Env.transform;
         Level.AddComponent<GenerateScene>();
         Destroy(Level.GetComponent("GenerateScene"));
         character.gameObject.SetActive(true);
         character.isAlive = true;
         character.particle[4].Stop();
+        backGroundAudio.Play();
     }
 
     public void GameStart()
@@ -70,6 +101,7 @@ public class PlayerHUD : MonoBehaviour
         gameEndPanel.SetActive(true);
         goldCount.gameObject.SetActive(false);
         time.gameObject.SetActive(false);
+        backGroundAudio.Pause();
     }
 
     public void GameComplete()
@@ -77,6 +109,7 @@ public class PlayerHUD : MonoBehaviour
         gameCompletePanel.SetActive(true);
         goldCount.gameObject.SetActive(false);
         time.gameObject.SetActive(false);
+        backGroundAudio.Stop();
     }
 
     void Update()

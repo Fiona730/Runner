@@ -29,34 +29,34 @@ public class GenerateScene : MonoBehaviour
         "TreeBirch-01", //2*2
         "TreeBirch-03", //2*2
         "TreeBirch-05", //2*3
-        "TreeBirch-06", //2*2
+        //"TreeBirch-06", //2*2
         "TreeDead-04", //2*2
         "RoadSign-01", //2*2
         "ShrubTall-01", //2*2
         "PondReed-02", //1*1
         "Tree_Sml-01", //1*1
-        "Tree_Sml-02", //1*1
+        //"Tree_Sml-02", //1*1
         "Tree_Sml-03", //1*1
-        "Tree_Sml-04", //1*1
+        //"Tree_Sml-04", //1*1
     };
     int[] pattern_object_num = {
         2, //"RockCliff-03", 6*4
         2, //"RockCliff-01", 4*4
-        2, //"Tree-04", 3*4
-        2, //"Tree-02", 2*2
+        1, //"Tree-04", 3*4
+        1, //"Tree-02", 2*2
         1, //"Tree-05", 2*3
         1, //"TreeBirch-01", 2*2
         1, //"TreeBirch-03", 2*2
         1, //"TreeBirch-05", 2*3
-        1, //"TreeBirch-06", 2*2
+        //1, //"TreeBirch-06", 2*2
         1, //"TreeDead-04", 2*2
         1, //"RoadSign-01", 2*2
         1, //"ShrubTall-01", 2*2
         1, //"PondReed-02", 1*1
         1, //"Tree_Sml-01", 1*1
-        1, //"Tree_Sml-02", 1*1
+        //1, //"Tree_Sml-02", 1*1
         1, //"Tree_Sml-03", 1*1
-        1, //"Tree_Sml-04", 1*1
+        //1, //"Tree_Sml-04", 1*1
     };
 
     string[] small_object = {

@@ -9,6 +9,7 @@ public class PlayerCharacter : MonoBehaviour
     public float speed;
     public float jumpForce;
     public AudioClip jumpClip;
+    public AudioClip dieClip;
     public ParticleSystem[] particle = new ParticleSystem[5];
     //RunNormal, RunFast, RunSlow, Jump, Die
     public int coinCount;
@@ -40,15 +41,8 @@ public class PlayerCharacter : MonoBehaviour
 
         isAlive = false;
         gameObject.SetActive(false);
-        coinCount = 0;
 
-        deadTimes = 0;
-        gameTime = 0;
-        coinCountSaved = 0;
-        coinList = new GameObject[0];
-        posSaved = transform.position;
-        rotSaved = transform.rotation;
-        gameTimeSaved = 0;
+        recoverBegin();
     }
 
     // Update is called once per frame
@@ -189,7 +183,7 @@ public class PlayerCharacter : MonoBehaviour
         coinCount += 1;
     }
 
-    public void recoverTransform()
+    public void recoverCheckpoint()
     {
         GetComponentInChildren<Renderer>().enabled=true;
         SetParticleSystem(0);
@@ -198,7 +192,7 @@ public class PlayerCharacter : MonoBehaviour
         transform.position = posSaved;
         transform.rotation = rotSaved;
         gameTime = gameTimeSaved;
-        isAlive = true;
+        //isAlive = true;
         for (int i=0; i<coinList.Length; i++)
         {
             coinList[i].SetActive(true);
@@ -206,11 +200,32 @@ public class PlayerCharacter : MonoBehaviour
         coinList = new GameObject[0];
     }
 
+    public void recoverBegin()
+    {
+        GetComponentInChildren<Renderer>().enabled=true;
+        SetParticleSystem(0);
+
+        coinCount = 0;
+        transform.position = new Vector3(0, 0.5f, 0);
+        transform.rotation = Quaternion.Euler(0, 30, 0);
+        rigid.velocity = new Vector3(0, 0, 0);
+        gameTime = 0;
+        deadTimes = 0;
+        coinList = new GameObject[0];
+
+        coinCountSaved = 0;
+        posSaved = transform.position;
+        rotSaved = transform.rotation;
+        gameTimeSaved = 0;
+        percentage = 0;
+    }
+
     public void Die()
     {
         isAlive = false;
         deadTimes += 1;
         particle[4].Play();
+        AudioSource.PlayClipAtPoint(dieClip, transform.position);
         GetComponentInChildren<Renderer>().enabled=false;
         hud.GameEnd();
     }

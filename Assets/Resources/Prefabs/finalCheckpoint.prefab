@@ -5159,8 +5159,8 @@ BoxCollider:
   m_IsTrigger: 1
   m_Enabled: 1
   serializedVersion: 2
-  m_Size: {x: 0.99999994, y: 0.19999999, z: 1.1547003}
-  m_Center: {x: 0, y: 0.099999994, z: 0}
+  m_Size: {x: 0.99999994, y: 0.4, z: 1.1547003}
+  m_Center: {x: 0, y: 0.22, z: 0}
 --- !u!114 &6262067182394145141
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5190,7 +5190,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   particle: {fileID: 12688948926187446}
-  checkPointSound: {fileID: 8300000, guid: abd96d35f13f1b74184a3096ac783bed, type: 3}
+  checkPointSound: {fileID: 8300000, guid: 064b27964423aca49949157b0d8406ef, type: 3}
 --- !u!1 &8483536839530542747
 GameObject:
   m_ObjectHideFlags: 0

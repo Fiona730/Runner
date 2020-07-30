@@ -6,9 +6,13 @@ public class PlayerController : MonoBehaviour
 {
     public PlayerCharacter character;
     public float speedChangeTime = 1f;
+    public AudioClip speedUpClip;
+    public AudioClip speedDownClip;
     Vector3 turnPosition;
     bool waitToTurn;
     bool countJump;
+    bool countSpeedUp;
+    bool countSpeedDown;
     float timeJump;
     float speedMultiplier;
     float timeSpeed;
@@ -18,6 +22,8 @@ public class PlayerController : MonoBehaviour
     {
         waitToTurn = false;
         countJump = false;
+        countSpeedUp = false;
+        countSpeedDown = false;
         timeJump = 0;
         speedMultiplier = 1;
         timeSpeed = 0;
@@ -70,17 +76,19 @@ public class PlayerController : MonoBehaviour
             {
                 timeJump = 0;
                 countJump = false;
-                // character.SetParticleSystem(0);
+                character.SetParticleSystem(0);
             }
         }
 
-        if (timeSpeed>0)
+        if (countSpeedUp || countSpeedDown)
         {
             timeSpeed += Time.deltaTime;
             if (timeSpeed >= speedChangeTime)
             {
                 timeSpeed = 0;
                 speedMultiplier = 1;
+                countSpeedUp = false;
+                countSpeedDown = false;
                 character.SetParticleSystem(0);
             }
         }
@@ -102,15 +110,25 @@ public class PlayerController : MonoBehaviour
                         break;
                     case "speedUp(Clone)":
                         character.Move(2);
-                        speedMultiplier = 2f;
-                        timeSpeed = Time.deltaTime;
-                        character.SetParticleSystem(1);
+                        if (!countSpeedUp)
+                        {
+                            countSpeedUp = true;
+                            speedMultiplier = 2f;
+                            timeSpeed = Time.deltaTime;
+                            character.SetParticleSystem(1);
+                            AudioSource.PlayClipAtPoint(speedUpClip, character.transform.position);
+                        }
                         break;
                     case "speedDown(Clone)":
                         character.Move(0.5f);
-                        speedMultiplier = 0.5f;
-                        timeSpeed = Time.deltaTime;
-                        character.SetParticleSystem(2);
+                        if (!countSpeedDown)
+                        {
+                            countSpeedDown = true;
+                            speedMultiplier = 0.5f;
+                            timeSpeed = Time.deltaTime;
+                            character.SetParticleSystem(2);
+                            AudioSource.PlayClipAtPoint(speedDownClip, character.transform.position);
+                        }
                         break;
                     case "jump(Clone)":
                         if(!countJump)
