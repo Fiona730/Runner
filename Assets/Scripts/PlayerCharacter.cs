@@ -2,31 +2,37 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class PlayerCharacter : MonoBehaviour
+public class PlayerCharacter : Character
 {
-    public bool isAlive;
+    //public bool isAlive;
     public bool inGround;
-    public float speed;
+    //public float speed;
     public float jumpForce;
     public AudioClip jumpClip;
-    public AudioClip dieClip;
+    //public AudioClip dieClip;
     public ParticleSystem[] particle = new ParticleSystem[5];
     //RunNormal, RunFast, RunSlow, Jump, Die
     public int coinCount;
-    
+    public int diamondCount;
     public Vector3 posSaved;
     public Quaternion rotSaved;
     public float gameTimeSaved;
     public int coinCountSaved;
+    public int diamondCountSaved;
     public GameObject[] coinList; // recover coins from the last checkpoint
+    public GameObject[] diamondList;
+    public GameObject[] deadAIs; // recover AIs from the last checkpoint
     public int deadTimes;
     public float gameTime;
     public float percentage; // percentage of path passed
+    public bool justRecovered; // used in checkpoint.cs
 
-    Rigidbody rigid;
-    Renderer render;
-    Animator animator;
+    //Rigidbody rigid;
+    //Renderer render;
+    //public Animator animator;
     PlayerHUD hud;
+    Arrow arrow;
+    GameObject AICollided;
 
     void Start()
     {
@@ -34,6 +40,8 @@ public class PlayerCharacter : MonoBehaviour
         render = GetComponentInChildren<Renderer>();
         animator = GetComponentInChildren<Animator>();
         hud = FindObjectOfType<PlayerHUD>();
+        arrow = FindObjectOfType<Arrow>();
+        //collider = GetComponent<BoxCollider>();
 
         render.material.color = Color.yellow;
         SetParticleSystem(0);
@@ -58,18 +66,10 @@ public class PlayerCharacter : MonoBehaviour
         /*if (isAlive && !inGround) {
             SetParticleSystem(3);
         }*/
-
-    }
-
-    public void Move(float multiplier)
-    {
-        if (!isAlive) return;
-
-        float angle = transform.rotation.eulerAngles.y;
-        rigid.velocity = new Vector3(Mathf.Sin(2*Mathf.PI*angle/360f), 0, Mathf.Cos(2*Mathf.PI*angle/360f)) * speed * multiplier;
-
-        //
-        //rigid.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+        //Debug.DrawLine(transform.position+transform.forward*0.2f, transform.position+transform.forward*1f, Color.red, 0.1f);
+        
+        //arrow.transform.position = transform.position + transform.forward*0.3f + new Vector3(0, 0.25f, 0);
+        //arrow.transform.localRotation = Quaternion.Euler(90, 0, 0);
     }
 
     public void Jump()
@@ -103,62 +103,6 @@ public class PlayerCharacter : MonoBehaviour
         }
     }*/
 
-    public Collider HexagonCheck()
-    {
-        Collider[] colliders = Physics.OverlapSphere(transform.position, 0.3f);
-        //Debug.Log(colliders.Length);
-        int tmp = -1;
-        float distance;
-        float max_distance = 30;
-        for (int i = 0; i < colliders.Length; i++)
-        {
-            //Debug.Log(colliders[i].gameObject.name);
-            string s = colliders[i].gameObject.name.Substring(0, colliders[i].gameObject.name.Length-7);
-            if (((IList)GenerateScene.hex_name).Contains(s))
-            {
-                distance = (colliders[i].transform.position - transform.position).magnitude;
-                if(distance < max_distance)
-                {
-                    max_distance = distance;
-                    tmp = i;
-                }
-                // return colliders[i];
-            }
-        }
-        if(tmp>=0) return colliders[tmp];
-        return null;
-    }
-
-    /*public Vector3 GetHexTurnPosition(Collider collider)
-    {
-        Transform currentHex = collider.transform;
-        Vector3 dis = currentHex.position - transform.position;
-        dis.y = 0;
-        Vector3 turnPosition;
-
-        if (Vector3.Dot(dis, transform.forward)>=0)
-        {
-            // Turn at the current hexagon
-            turnPosition = currentHex.position;
-            turnPosition.y = transform.position.y;
-            return turnPosition;
-        }
-
-        // Vector3.Dot(dis, transform.forward)<0
-        // Turn at the next hexagon
-        turnPosition = currentHex.position + transform.forward * 1.1f;
-        turnPosition.y = transform.position.y;
-        return turnPosition;
-    }*/
-
-    public Vector3 GetHexTurnPosition(Collider collider)
-    {
-        Vector3 currentHex = collider.transform.position;
-        Vector3 turnPosition = currentHex + transform.forward * Scene.xDistanceHex;
-        turnPosition.y = transform.position.y;
-        return turnPosition;
-    }
-
     public void SetParticleSystem(int num)
     {
         if (num>=0 && num<particle.Length-1)
@@ -169,27 +113,42 @@ public class PlayerCharacter : MonoBehaviour
         }
     }
 
-    public void KeepParticleSystem(int num)
+    /*public void KeepParticleSystem(int num)
     {
         for (int i=0; i<particle.Length; i++)
         {
             if (particle[i].gameObject.activeSelf)
                 particle[i].gameObject.SetActive(true);
         }
-    }
+    }*/
 
     public void AddCoin()
     {
         coinCount += 1;
     }
 
+    public void AddDiamond()
+    {
+        diamondCount += 1;
+    }
+
     public void recoverCheckpoint()
     {
-        GetComponentInChildren<Renderer>().enabled=true;
+        render.enabled = true;
+        //collider.enabled = true;
+        if (AICollided != null)
+        {
+            Physics.IgnoreCollision(GetComponent<BoxCollider>(), AICollided.GetComponent<BoxCollider>(), false);
+            AICollided = null;
+        }
         SetParticleSystem(0);
 
         coinCount = coinCountSaved;
+        diamondCount = diamondCountSaved;
         transform.position = posSaved;
+        if(transform.position.x == 0 && transform.position.z == 0)
+            justRecovered = false;
+        else justRecovered = true;
         transform.rotation = rotSaved;
         gameTime = gameTimeSaved;
         //isAlive = true;
@@ -198,36 +157,72 @@ public class PlayerCharacter : MonoBehaviour
             coinList[i].SetActive(true);
         }
         coinList = new GameObject[0];
+
+        for (int i=0; i<diamondList.Length; i++)
+        {
+            diamondList[i].SetActive(true);
+        }
+        diamondList = new GameObject[0];
+
+        for (int i=0; i<deadAIs.Length; i++)
+        {
+            //deadAIs[i].SetActive(true);
+            deadAIs[i].GetComponent<AICharacter>().Initialize();
+            Physics.IgnoreCollision(GetComponent<BoxCollider>(), deadAIs[i].GetComponent<BoxCollider>(), false);
+        }
+        deadAIs = new GameObject[0];
     }
 
     public void recoverBegin()
     {
-        GetComponentInChildren<Renderer>().enabled=true;
+        render.enabled = true;
+        //collider.enabled = true;
+        if (AICollided != null)
+        {
+            Physics.IgnoreCollision(GetComponent<BoxCollider>(), AICollided.GetComponent<BoxCollider>(), false);
+            AICollided = null;
+        }
         SetParticleSystem(0);
 
         coinCount = 0;
+        diamondCount = 0;
         transform.position = new Vector3(0, 0.5f, 0);
         transform.rotation = Quaternion.Euler(0, 30, 0);
         rigid.velocity = new Vector3(0, 0, 0);
         gameTime = 0;
         deadTimes = 0;
         coinList = new GameObject[0];
+        diamondList = new GameObject[0];
+        deadAIs = new GameObject[0];
 
         coinCountSaved = 0;
+        diamondCountSaved = 0;
         posSaved = transform.position;
         rotSaved = transform.rotation;
         gameTimeSaved = 0;
         percentage = 0;
+        justRecovered = false;
     }
 
-    public void Die()
+    public void Die(GameObject obj=null)
     {
         isAlive = false;
         deadTimes += 1;
-        particle[4].Play();
-        AudioSource.PlayClipAtPoint(dieClip, transform.position);
-        GetComponentInChildren<Renderer>().enabled=false;
+        //particle[4].Play();
+        //AudioSource.PlayClipAtPoint(dieClip, transform.position);
+        render.enabled = false;
+        //collider.enabled = false;
+        if (obj!=null)
+            AICollided = obj;
         hud.GameEnd();
+    }
+
+    public void Stop()
+    {
+        Scene.gameStopped = true;
+        animator.enabled = false;
+        SetParticleSystem(-1); // close all particle system
+        hud.GameStop();
     }
 
     public void GameComplete()

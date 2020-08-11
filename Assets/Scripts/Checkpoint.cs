@@ -31,18 +31,29 @@ public class Checkpoint : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        Debug.Log("Reach Checkpoint: "+num);
         var player = other.GetComponent<PlayerCharacter>();
 
         if (player)
         {
-            player.coinCountSaved = player.coinCount;
-            player.posSaved = player.transform.position + Scene.xDistanceHex*player.transform.forward*2;
-            player.rotSaved = player.transform.rotation;
-            player.gameTimeSaved = player.gameTime;
-            player.coinList = new GameObject[0];
-            player.percentage = (num+1)/(float)(total+1);
-            AudioSource.PlayClipAtPoint(checkPointSound, transform.position);
+            if (!player.justRecovered)
+            {
+                Debug.Log("Save at Checkpoint: "+num);
+                player.coinCountSaved = player.coinCount;
+                player.diamondCountSaved = player.diamondCount;
+                player.posSaved = player.transform.position;
+                //player.transform.position + Scene.xDistanceHex*player.transform.forward*1.3f;
+                player.rotSaved = player.transform.rotation;
+                player.gameTimeSaved = player.gameTime;
+                player.coinList = new GameObject[0];
+                player.deadAIs = new GameObject[0];
+                player.percentage = (num+1)/(float)(total+1);
+                AudioSource.PlayClipAtPoint(checkPointSound, transform.position);
+            }
+            else {
+                Debug.Log("Load at Checkpoint: "+num);
+                player.justRecovered = false;
+            }
+
         }
     }
 }

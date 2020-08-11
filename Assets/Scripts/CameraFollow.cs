@@ -9,6 +9,7 @@ public class CameraFollow : MonoBehaviour {
     public float smooth = 5f;//位置平滑移动值
     public float camDepthSmooth = 1f;
     public float x_angle = 30f;
+    
     void Start() 
     {
         m_Player = FindObjectOfType<PlayerCharacter>();

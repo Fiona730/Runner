@@ -23,9 +23,9 @@ public class Utils : MonoBehaviour
         Array.Resize(ref array, array.Length + length);
     }
 
-    public static void Sort(ref Scene.hexNum[] array)
+    public static void Sort(ref Scene.areaStartEnd[] array)
     {
-        Scene.hexNum tmp;
+        Scene.areaStartEnd tmp;
         for (int i=1; i<=array.Length-1; i++)
             for (int j=0; j<array.Length-i; j++)
         {
@@ -36,5 +36,38 @@ public class Utils : MonoBehaviour
                 array[j+1] = tmp;
             }
         }
+    }
+
+    public static Scene.areaStartEnd[] Reverse(Scene.areaStartEnd[] array)
+    {
+        Scene.areaStartEnd[] tmp = new Scene.areaStartEnd[array.Length];
+        for (int i=0; i<array.Length; i++)
+        {
+            tmp[i] = array[array.Length-1-i];
+        }
+        return tmp;
+    }
+
+    public static bool FindElementInArray(Scene.hexNum[] array, Scene.hexNum element)
+    {
+        for (int i=0; i<array.Length; i++)
+        {
+            if (array[i].num_x==element.num_x && array[i].num_z==element.num_z)
+                return true;
+        }
+        return false;
+    }
+
+    public static void DebugDrawPoint(Scene.hexNum hexN, int angle, Color color, float y=0.5f)
+    {
+        Scene.hexAxis hexA = Hexagon.NumToAxis(hexN.num_x, hexN.num_z);
+        Vector3 pos;
+        pos.x = hexA.axis_x;
+        pos.z = hexA.axis_z;
+        pos.y = y;
+
+        Vector3 dir = Matrix4x4.Rotate(Quaternion.Euler(0, angle, 0)).MultiplyVector(Vector3.forward);
+
+        Debug.DrawLine(pos, pos+dir*0.5f, color, 10f);
     }
 }

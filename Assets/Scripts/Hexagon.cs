@@ -27,6 +27,23 @@ public class Hexagon : MonoBehaviour
         neighbour = GetNeighbourHex(hexNum);
     }
 
+    public static int NearestAngleForCamera(Scene.hexAxis start, Scene.hexAxis end)
+    {
+        Vector3 v = new Vector3(end.axis_x - start.axis_x, 0, end.axis_z - start.axis_z);
+        float angle = Vector3.Angle(Vector3.forward, v);
+        int angleInt = Mathf.RoundToInt((angle-30)/60) * 60 + 30;
+        if (Vector3.Cross(v, Vector3.forward).y>0)
+            angleInt = -angleInt;
+        return angleInt;
+    }
+
+    public static Vector3 CenterVectorBetweenTwoHex(Scene.hexNum start, Scene.hexNum end)
+    {
+        Scene.hexAxis startAxis = NumToAxis(start.num_x, start.num_z);
+        Scene.hexAxis endAxis = NumToAxis(end.num_x, end.num_z);
+        return new Vector3(endAxis.axis_x - startAxis.axis_x, 0, endAxis.axis_z - startAxis.axis_z);
+    }
+
     public static Scene.hexAxis NumToAxis(int num_x, int num_z)
     {
         Scene.hexAxis hexA;
@@ -37,13 +54,13 @@ public class Hexagon : MonoBehaviour
         return hexA;
     }
 
-    public static Scene.hexNum AxisToNum(float axis_x, int axis_z)
+    public static Scene.hexNum AxisToNum(float axis_x, float axis_z)
     {
         Scene.hexNum hexN;
-        hexN.num_z = (int)(axis_z/Scene.zDistanceHex);
+        hexN.num_z = Mathf.RoundToInt(axis_z/Scene.zDistanceHex);
         if (hexN.num_z%2==1)
             axis_x -= Scene.xDistanceHex/2;
-        hexN.num_x = (int)(axis_x/Scene.xDistanceHex);
+        hexN.num_x = Mathf.RoundToInt(axis_x/Scene.xDistanceHex);
         return hexN;
     }
 
@@ -145,9 +162,9 @@ public class Hexagon : MonoBehaviour
         {
             noisyEdge[i] = CubeToOffsetCoord(noisyEdge[i]);
             if (noisyEdge[i].num_x<0) noisyEdge[i].num_x=0;
-            if (noisyEdge[i].num_x>=Scene.areaLength) noisyEdge[i].num_x=Scene.areaLength-1;
+            if (noisyEdge[i].num_x>=Scene.areaHeight) noisyEdge[i].num_x=Scene.areaHeight-1;
             if (noisyEdge[i].num_z<0) noisyEdge[i].num_z=0;
-            if (noisyEdge[i].num_z>=Scene.areaLength) noisyEdge[i].num_z=Scene.areaLength-1;
+            if (noisyEdge[i].num_z>=Scene.areaWidth) noisyEdge[i].num_z=Scene.areaWidth-1;
         }
         return noisyEdge;
     }
@@ -202,9 +219,9 @@ public class Hexagon : MonoBehaviour
         {
             edge[i] = CubeToOffsetCoord(edge[i]);
             if (edge[i].num_x<0) edge[i].num_x=0;
-            if (edge[i].num_x>=Scene.areaLength) edge[i].num_x=Scene.areaLength-1;
+            if (edge[i].num_x>=Scene.areaHeight) edge[i].num_x=Scene.areaHeight-1;
             if (edge[i].num_z<0) edge[i].num_z=0;
-            if (edge[i].num_z>=Scene.areaLength) edge[i].num_z=Scene.areaLength-1;
+            if (edge[i].num_z>=Scene.areaWidth) edge[i].num_z=Scene.areaWidth-1;
         }
         return edge;
     }
@@ -214,6 +231,7 @@ public class Hexagon : MonoBehaviour
         start = OffsetToCubeCoord(start);
         end = OffsetToCubeCoord(end);
         Scene.hexNum[] line = GetLineBetweenPointsCube(start, end);
+        if (line == null)   return null;
         for(int i=0; i<line.Length; i++)
         {
             line[i] = CubeToOffsetCoord(line[i]);
@@ -307,33 +325,55 @@ public class Hexagon : MonoBehaviour
     {
         Scene.hexNum[] area = new Scene.hexNum[0];
         Scene.hexNum[] row;
-        int rowLength, randomStart, randowHeight=height;
+        Scene.hexNum bottomRowCenter, upRowCenter;
+        int rowLength, randomStart, randomHeight=height;
+        
+        bottomRowCenter = new Scene.hexNum {
+            num_x = hexN.num_x + (height-1)/2,
+            num_z = hexN.num_z
+        };
+
+        upRowCenter = new Scene.hexNum { // temporary value
+            num_x = -1,
+            num_z = -1
+        };
 
         for (int i=1; i<=width; i++)
         {
-            row = GetRow(hexN, randowHeight);
+            row = GetRow(hexN, randomHeight);
             rowLength = row.Length;
+            Utils.Add(ref area, row);
 
-            randomStart = UnityEngine.Random.Range(-1, 2); // -1, 0, 1
+            if (i==width)
+            {
+                upRowCenter = new Scene.hexNum {
+                    num_x = hexN.num_x + (randomHeight-1)/2,
+                    num_z = hexN.num_z
+                };
+            }
+
+            randomStart = UnityEngine.Random.Range(-1+hexN.num_z%2, 1+hexN.num_z%2); // -1, 0, 1
             hexN.num_x += randomStart;
             hexN.num_z += 1;
-            if (hexN.num_z>=Scene.areaLength) break;
+            if (hexN.num_z>=Scene.areaWidth) break;
             if (hexN.num_x<0) {
                 hexN.num_x=0;
                 randomStart=0;
             }
 
-            randowHeight = rowLength + UnityEngine.Random.Range(-1-randomStart, 3);
-            if(randowHeight<=0) randowHeight = 1;
-            Utils.Add(ref area, row);
+            randomHeight = rowLength + UnityEngine.Random.Range(-1-randomStart, 3);
+            if(randomHeight<=0) randomHeight = 1;
+            if(height>=3 && randomHeight>=1.5f*height) randomHeight = Mathf.RoundToInt(1.5f*height);
         }
+        Utils.Add(ref area, bottomRowCenter);
+        Utils.Add(ref area, upRowCenter);
         return area;
     }
 
     public static Scene.hexNum[] GetRow(Scene.hexNum hexN, int height)
     {
-        if (hexN.num_x+height >= Scene.areaLength)
-            height = Scene.areaLength-hexN.num_x-1;
+        if (hexN.num_x+height >= Scene.areaHeight)
+            height = Scene.areaHeight-hexN.num_x-1;
         Scene.hexNum[] row = new Scene.hexNum[height];
         Scene.hexNum tmp = hexN;
         for (int i=0; i<height; i++)
@@ -420,20 +460,45 @@ public class Hexagon : MonoBehaviour
     }
 
     // Get 6 neighbour hexagons
-    public static Scene.hexNum[] GetNeighbourHex(Scene.hexNum hexN)
+    public static Scene.hexNum[] GetNeighbourHex(Scene.hexNum hexN, bool OutOfBound=true)
     {
         Scene.hexNum[] neighbour = new Scene.hexNum[6];
         // some values can possibly be null
-        neighbour[0] = GetLeftUpHex(hexN);
-        neighbour[1] = GetRightUpHex(hexN);
-        neighbour[2] = GetRightHex(hexN);
-        neighbour[3] = GetRightDownHex(hexN);
-        neighbour[4] = GetLeftDownHex(hexN);
-        neighbour[5] = GetLeftHex(hexN);
+        neighbour[0] = GetLeftUpHex(hexN, OutOfBound);
+        neighbour[1] = GetRightUpHex(hexN, OutOfBound);
+        neighbour[2] = GetRightHex(hexN, OutOfBound);
+        neighbour[3] = GetRightDownHex(hexN, OutOfBound);
+        neighbour[4] = GetLeftDownHex(hexN, OutOfBound);
+        neighbour[5] = GetLeftHex(hexN, OutOfBound);
         return neighbour;
     }
+
+    public static Scene.hexNum GetHexByAngle(Scene.hexNum hexN, int angle, bool OutOfBound=true)
+    {
+        Scene.hexNum result = new Scene.hexNum {num_x=-1, num_z=-1};
+        if (angle > 150) angle -= 360;
+        if (angle < -150) angle += 360;
+        switch (angle)
+        {
+            case 30:
+                result = GetRightUpHex(hexN, OutOfBound); break;
+            case 90:
+                result = GetRightHex(hexN, OutOfBound); break;
+            case 150:
+                result = GetRightDownHex(hexN, OutOfBound); break;
+            case -150:
+                result = GetLeftDownHex(hexN, OutOfBound); break;
+            case -90:
+                result = GetLeftHex(hexN, OutOfBound); break;
+            case -30:
+                result = GetLeftUpHex(hexN, OutOfBound); break;
+            default:
+                break;
+        }
+        return result;
+    }
     
-    public static Scene.hexNum GetLeftUpHex(Scene.hexNum hexN)
+    public static Scene.hexNum GetLeftUpHex(Scene.hexNum hexN, bool OutOfBound=true)
     {
         Scene.hexNum tmp;
         if(hexN.num_z % 2 == 0)
@@ -445,11 +510,11 @@ public class Hexagon : MonoBehaviour
             tmp.num_x = hexN.num_x;
             tmp.num_z = hexN.num_z+1;
         }
-        if (tmp.num_x<0 || tmp.num_z>=Scene.areaLength) return new Scene.hexNum {num_x=-1, num_z=-1};; // outside boundary
+        if (OutOfBound && (tmp.num_x<0 || tmp.num_z>=Scene.areaWidth)) return new Scene.hexNum {num_x=-1, num_z=-1};; // outside boundary
         return tmp;
     }
 
-    public static Scene.hexNum GetRightUpHex(Scene.hexNum hexN)
+    public static Scene.hexNum GetRightUpHex(Scene.hexNum hexN, bool OutOfBound=true)
     {
         Scene.hexNum tmp;
         if(hexN.num_z % 2 == 0)
@@ -461,20 +526,20 @@ public class Hexagon : MonoBehaviour
             tmp.num_x = hexN.num_x+1;
             tmp.num_z = hexN.num_z+1;
         }
-        if (tmp.num_x>=Scene.areaLength || tmp.num_z>=Scene.areaLength) return new Scene.hexNum {num_x=-1, num_z=-1}; // outside boundary
+        if (OutOfBound && (tmp.num_x>=Scene.areaHeight || tmp.num_z>=Scene.areaWidth)) return new Scene.hexNum {num_x=-1, num_z=-1}; // outside boundary
         return tmp;
     }
 
-    public static Scene.hexNum GetRightHex(Scene.hexNum hexN)
+    public static Scene.hexNum GetRightHex(Scene.hexNum hexN, bool OutOfBound=true)
     {
         Scene.hexNum tmp;
         tmp.num_x = hexN.num_x+1;
         tmp.num_z = hexN.num_z;
-        if (tmp.num_x>=Scene.areaLength) return new Scene.hexNum {num_x=-1, num_z=-1};; // outside boundary
+        if (OutOfBound && tmp.num_x>=Scene.areaHeight) return new Scene.hexNum {num_x=-1, num_z=-1};; // outside boundary
         return tmp;
     }
 
-    public static Scene.hexNum GetRightDownHex(Scene.hexNum hexN)
+    public static Scene.hexNum GetRightDownHex(Scene.hexNum hexN, bool OutOfBound=true)
     {
         Scene.hexNum tmp;
         if(hexN.num_z % 2 == 0)
@@ -486,11 +551,11 @@ public class Hexagon : MonoBehaviour
             tmp.num_x = hexN.num_x+1;
             tmp.num_z = hexN.num_z-1;
         }
-        if (tmp.num_x>=Scene.areaLength || tmp.num_z<0) return new Scene.hexNum {num_x=-1, num_z=-1};;
+        if (OutOfBound && (tmp.num_x>=Scene.areaHeight || tmp.num_z<0)) return new Scene.hexNum {num_x=-1, num_z=-1};;
         return tmp;
     }
 
-    public static Scene.hexNum GetLeftDownHex(Scene.hexNum hexN)
+    public static Scene.hexNum GetLeftDownHex(Scene.hexNum hexN, bool OutOfBound=true)
     {
         Scene.hexNum tmp;
         if(hexN.num_z % 2 == 0)
@@ -502,16 +567,16 @@ public class Hexagon : MonoBehaviour
             tmp.num_x = hexN.num_x;
             tmp.num_z = hexN.num_z-1;
         }
-        if (tmp.num_x<0 || tmp.num_z<0) return new Scene.hexNum {num_x=-1, num_z=-1};;
+        if (OutOfBound && (tmp.num_x<0 || tmp.num_z<0)) return new Scene.hexNum {num_x=-1, num_z=-1};;
         return tmp;
     }
 
-    public static Scene.hexNum GetLeftHex(Scene.hexNum hexN)
+    public static Scene.hexNum GetLeftHex(Scene.hexNum hexN, bool OutOfBound=true)
     {
         Scene.hexNum tmp;
         tmp.num_x = hexN.num_x-1;
         tmp.num_z = hexN.num_z;
-        if (tmp.num_x<0) return new Scene.hexNum {num_x=-1, num_z=-1};;
+        if (OutOfBound && tmp.num_x<0) return new Scene.hexNum {num_x=-1, num_z=-1};;
         return tmp;
     }
 }

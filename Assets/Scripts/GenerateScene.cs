@@ -1,14 +1,19 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 //[ExecuteInEditMode]
 public class GenerateScene : MonoBehaviour
 {
+    public int randomSeed;
     public int checkpointNum;
     GameObject[] objects;
     GameObject[] hex;
-    GameObject finalCheckpoint, coin;
+    GameObject finalCheckpoint, coin, diamond, AICharacter;
+    GameObject terrain;
     public static string[] hex_name = {
         "grass",
         "sand",
@@ -18,16 +23,18 @@ public class GenerateScene : MonoBehaviour
         "speedDown",
         "jump",
         "checkpoint",
-        "start"
+        "start",
+        "bomb",
     };
+
     string[] pattern_object = {
         "RockCliff-03", //6*4
         "RockCliff-01", //4*4
         "Tree-04", //3*4
-        "Tree-02", //2*2
+        //"Tree-02", //2*2
         "Tree-05", //2*3
         "TreeBirch-01", //2*2
-        "TreeBirch-03", //2*2
+        //"TreeBirch-03", //2*2
         "TreeBirch-05", //2*3
         //"TreeBirch-06", //2*2
         "TreeDead-04", //2*2
@@ -40,13 +47,13 @@ public class GenerateScene : MonoBehaviour
         //"Tree_Sml-04", //1*1
     };
     int[] pattern_object_num = {
-        2, //"RockCliff-03", 6*4
-        2, //"RockCliff-01", 4*4
+        1, //"RockCliff-03", 6*4
+        1, //"RockCliff-01", 4*4
         1, //"Tree-04", 3*4
-        1, //"Tree-02", 2*2
+        //1, //"Tree-02", 2*2
         1, //"Tree-05", 2*3
         1, //"TreeBirch-01", 2*2
-        1, //"TreeBirch-03", 2*2
+        //1, //"TreeBirch-03", 2*2
         1, //"TreeBirch-05", 2*3
         //1, //"TreeBirch-06", 2*2
         1, //"TreeDead-04", 2*2
@@ -116,7 +123,7 @@ public class GenerateScene : MonoBehaviour
     };
 
     string[] large_rock = {
-        "RockCliff-0203", //30*18
+        //"RockCliff-0203", //30*18
         "RockCliff-03", //26*15
         "RockCliff-03-1", //17*22
         "RockCliff-02", //17*17
@@ -124,7 +131,7 @@ public class GenerateScene : MonoBehaviour
     };
 
     int[] large_rock_num = {
-        1, //"RockCliff-0203", 30*18
+        //1, //"RockCliff-0203", 30*18
         1, //"RockCliff-03", 26*15
         1, //"RockCliff-03-1", 17*22
         1, //"RockCliff-02", 17*17
@@ -163,8 +170,12 @@ public class GenerateScene : MonoBehaviour
         1 //"Birch-03", 8*8
     };
 
-    void Awake()
+    int[] idleAreaInPattern;
+
+    public void genScene()
     {
+        UnityEngine.Random.InitState(randomSeed);
+
         LoadHexagonObjects();
         Scene.Initialize();
 
@@ -173,14 +184,19 @@ public class GenerateScene : MonoBehaviour
 
         // place checkpoints
         Scene.GetCheckpointPosValue();
-        PlaceCheckpointHexagonPatterns(Scene.checkpointPos.Length, Scene.checkpointPos, 3);
+        PlaceCheckpointHexagonPatterns(Scene.checkpointPos, 10);
+        GenerateCheckpointRandomArea(Scene.checkpointPos, 4, 6);
+
+        idleAreaInPattern = InsertPattern();
 
         PlaceAllHexagonPatternsInArray(pattern_object, pattern_object_num, "Prefabs/Scene/Hex/", 20);
 
-        ConnectAllHexagons();
-
         // Random Area
-        //GenerateRandomArea(2, 10, 15);
+        GenerateRandomArea(2, 5, 7, 10, 5);
+
+        ReleaseIdleAreaInPattern(idleAreaInPattern);
+
+        ConnectAllHexagons();
         
         PlaceAllSceneInArray(large_rock, large_rock_num, "Prefabs/Scene/Large/", 20);
         PlaceAllSceneInArray(large_object, large_object_num, "Prefabs/Scene/Large/", 10);
@@ -193,6 +209,65 @@ public class GenerateScene : MonoBehaviour
                 PlaceHexagon(i, j, sand);
             }*/
         FillRestArea(small_object_fill, "Prefabs/Scene/Small/", 3);
+
+        terrain = GameObject.Find("/Env/Terrain");
+        terrain.GetComponent<TerrainGenerate>().Generate();
+    }
+
+    void ReleaseIdleAreaInPattern(int[] idleArea)
+    {
+        for (int i=0; i<idleArea.Length; i++)
+        {
+            Debug.Assert(Scene.hexOccupied[idleArea[i]], "Idle area not occupied in ReleaseIdleAreaInPattern");
+            Scene.hexOccupied[idleArea[i]] = false;
+        }
+    }
+
+    int[] InsertPattern()
+    {
+        Pattern.Initialize();
+        int sample_count=0, start_x, start_z, num_local, num_global;
+        int total_count = 20;
+        Scene.hexNum bias;
+        int[] idleArea = new int[0];
+
+        while(true) {
+            sample_count += 1;
+            if(sample_count >= total_count) break;
+
+            start_x = UnityEngine.Random.Range(2, Scene.areaHeight-Pattern.height-2);
+            start_z = UnityEngine.Random.Range(2, Scene.areaWidth-Pattern.width-2);
+            if (Pattern.start_even && start_z%2==1) start_z += 1;
+
+            if (!Scene.JudgeWidthOccupancy(start_z-1, Pattern.width+1)) continue;
+
+            if (Scene.JudgeRectAreaOccupancy(start_x, start_z-1, Pattern.height, Pattern.width+1))
+            {
+                //Debug.Log("area value: "+Pattern.area[Pattern.GetOneDimensionVal(0, 1)]);
+                for (int i=0; i<Pattern.height; i++)
+                    for (int j=0; j<Pattern.width; j++)
+                    {
+                        num_local = Pattern.GetOneDimensionVal(i, j);
+                        if (Pattern.area[num_local] >= 0)
+                        {
+                            PlaceHexagon(start_x+i, start_z+j, hex[Pattern.area[num_local]], add_angle:true, follow:true);
+                        }
+                        else{
+                            num_global = Scene.GetOneDimensionVal(start_x+i, start_z+j);
+                            Utils.Add(ref idleArea, num_global);
+                        }
+                    }
+
+                Scene.SetRectAreaOccupancy(start_x, start_z, Pattern.height, Pattern.width, sceneOccupancy: false);
+                bias = new Scene.hexNum {num_x = start_x, num_z = start_z};
+                Scene.AddHexagonCenter(Pattern.start+bias, Pattern.end+bias, same: false);
+                Scene.SetWidthOccupancy(start_z-1, Pattern.width+1);
+
+                break;
+            }
+        }
+        if (sample_count == total_count) Debug.Log("Pattern placement not successful");
+        return idleArea;
     }
 
     void LoadHexagonObjects()
@@ -206,17 +281,18 @@ public class GenerateScene : MonoBehaviour
 
         finalCheckpoint = (GameObject)Resources.Load("Prefabs/finalCheckpoint");
         coin = (GameObject)Resources.Load("Prefabs/coin");
+        diamond = (GameObject)Resources.Load("Prefabs/diamond");
+        AICharacter = (GameObject)Resources.Load("Prefabs/AI");
     }
 
     void PlaceStartHexagons()
     {
-
-        GenerateRandomArea(4, 8, 1, true, 0, 0);
+        GenerateRandomArea(3, 6, 5, 8, 1, use_xz:true, static_x:0, static_z:0);
     }
 
     void PlaceEndHexagons()
     {
-        PlaceHexagonPattern(3, 3, finalCheckpoint, 100, 1, 3, 5, 3, true, Scene.areaLength-8, Scene.areaLength-8);
+        PlaceHexagonPattern(3, 3, finalCheckpoint, 100, 1, 3, 5, 3, true, Scene.areaHeight-8, Scene.areaWidth-8);
     }
 
     void FillRestArea(string[] name, string dir, int ratio)
@@ -226,46 +302,118 @@ public class GenerateScene : MonoBehaviour
         for(int i=0; i<name.Length; i++)
             objects[i] = (GameObject)Resources.Load(dir+name[i]);
 
-        for(int i=0; i<Scene.areaLength; i++)
-            for(int j=0; j<Scene.areaLength; j++)
+        for(int i=0; i<Scene.areaHeight; i++)
+            for(int j=0; j<Scene.areaWidth; j++)
             {
-                int val = Random.Range(0, name.Length*ratio);
+                int val = UnityEngine.Random.Range(0, name.Length*ratio);
                 if (val < name.Length)
-                    PlaceHexagon(i, j, objects[val], false);
+                    PlaceHexagon(i, j, objects[val], place_coin: false, show_minimap: false, isHex: false);
             }
     }
 
-    void GenerateRandomArea(int lower_bound, int upper_bound, int times, bool use_xz=false, int static_x=-1, int static_z=-1)
+    void GenerateRandomArea(int lower_bound_height, int upper_bound_height, int lower_bound_width, int upper_bound_width, int times, bool use_xz=false, int static_x=-1, int static_z=-1)
     {
         int sample_count, x, z, height, width;
         for (int i=0; i<times; i++)
         {
-            height = Random.Range(lower_bound, upper_bound+1);
-            width = Random.Range(lower_bound, upper_bound+1);
+            height = UnityEngine.Random.Range(lower_bound_height, upper_bound_height+1);
+            width = UnityEngine.Random.Range(lower_bound_width, upper_bound_width+1);
             sample_count = 0;
             while(true) {
                 sample_count += 1;
-                if(sample_count >= 5) break;
+                if(sample_count >= 10) break;
                 if (use_xz && static_x != -1 && static_z != -1) {
                     x = static_x;
                     z = static_z;
                 }
                 else {
-                    x = Random.Range(0, Scene.areaLength-height);
-                    z = Random.Range(0, Scene.areaLength-width);
+                    x = UnityEngine.Random.Range(0, Scene.areaHeight-height);
+                    z = UnityEngine.Random.Range(0, Scene.areaWidth-width);
                 }
+
+                if (!Scene.JudgeWidthOccupancy(z, width+1)) continue;
 
                 Scene.hexNum hexN = new Scene.hexNum {num_x=x, num_z=z};
                 Scene.hexNum[] area = Hexagon.GetRandomArea(hexN, height, width);
-                if(Scene.JudgeAreaOccupancy(area))
+                Scene.hexNum[] area_clean = area.ToList().GetRange(0, area.Length-2).ToArray();
+
+                if(Scene.JudgeAreaOccupancy(area_clean))
                 {
                     //Scene.SetAreaOccupancy(area); -> Occupancy set in PlaceHexagon
-                    PlaceHexagon(area, hex[1]); //sand
+                    PlaceHexagon(area_clean, hex[0], add_angle:true, follow:true); //grass
+
+                    //Scene.hexNum center = Scene.HalfLerp(area[area.Length-2], area[area.Length-1]);
+                    //Scene.AddHexagonCenter(center);
+                    Scene.AddHexagonCenter(area[area.Length-2], area[area.Length-1], same: false);
+                    //Debug.Log("area[area.Length-2]: "+area[area.Length-2].num_x+" "+area[area.Length-2].num_z);
+                    //Debug.Log("area[area.Length-1]: "+area[area.Length-1].num_x+" "+area[area.Length-1].num_z);
+                    Scene.SetWidthOccupancy(z, width+1);
+
+                    InsertSpeedDownModule(area_clean);
+                    InsertBombModule(area_clean);
                     break;
                 }
             }
         }
     }
+
+    void GenerateCheckpointRandomArea(Scene.hexNum[] pos, int lower_bound_width, int upper_bound_width)
+    {
+        int width;
+        Scene.hexNum hexN;
+        GameObject obj = (GameObject)Resources.Load("Prefabs/Hex/checkpoint");
+        GameObject obj_new;
+
+        for (int i=1; i<pos.Length; i+=2)
+        {
+            while(true) {
+                width = UnityEngine.Random.Range(lower_bound_width, upper_bound_width+1);
+                if (!Scene.JudgeWidthOccupancy(pos[i].num_z-width-1, width*2+1)) continue;
+
+                hexN = new Scene.hexNum {num_x=UnityEngine.Random.Range(5, Scene.areaHeight-5), num_z=pos[i].num_z-width};
+                Scene.hexNum[] area = Hexagon.GetRandomArea(hexN, 5, width*2);
+                Scene.hexNum[] area_clean = area.ToList().GetRange(0, area.Length-2).ToArray();
+                if(Scene.JudgeAreaOccupancy(area_clean))
+                {
+                    Scene.AddHexagonCenter(area[area.Length-2], area[area.Length-1], same:false);
+                    Scene.hexNum center = Scene.HalfLerp(area[area.Length-2], area[area.Length-1]);
+
+                    obj_new = PlaceSceneObject(center.num_x, center.num_z, 1, 1, obj);
+                    obj_new.GetComponent<Checkpoint>().num = i;
+                    obj_new.GetComponent<Checkpoint>().total = pos.Length;
+
+                    PlaceHexagon(area_clean, hex[0], add_angle:true, follow:true);
+                    Scene.SetWidthOccupancy(pos[i].num_z-width-1, width*2+1);
+                    break;
+                }
+            }
+        }
+    }
+
+    /*void GenerateCheckpointRandomArea(Scene.hexNum[] pos, int lower_bound_width, int upper_bound_width)
+    {
+        int width;
+        Scene.hexNum hexN;
+        GameObject obj = (GameObject)Resources.Load("Prefabs/Hex/checkpoint");
+        for (int i=0; i<pos.Length; i++)
+        {
+            while(true) {
+                width = UnityEngine.Random.Range(lower_bound_width, upper_bound_width+1);
+                hexN = new Scene.hexNum {num_x=pos[i].num_x-1, num_z=pos[i].num_z+1};
+                Scene.hexNum[] area = Hexagon.GetRandomArea(hexN, 3, width);
+                Scene.hexNum[] area_clean = area.ToList().GetRange(0, area.Length-2).ToArray();
+                if(Scene.JudgeAreaOccupancy(area_clean))
+                {
+                    PlaceHexagon(pos[i].num_x, pos[i].num_z, obj, place_coin:false, add_angle: true, follow:true);
+                    PlaceHexagon(area_clean, hex[0], add_angle:true, follow:true);
+                    Scene.SetWidthOccupancy(pos[i].num_z, width+1);
+                    Scene.AddHexagonCenter(pos[i]);
+                    Scene.AddHexagonCenter(area[area.Length-1]);
+                    break;
+                }
+            }
+        }
+    }*/
 
     void ConnectAllHexagons()
     {
@@ -273,85 +421,465 @@ public class GenerateScene : MonoBehaviour
 
         Scene.hexNum[] line;
         Scene.hexNum start, end;
+        Scene.hexAxis startAxis, endAxis;
+        Scene.hexNum[] startOfLine = null;
+        Scene.hexNum[] startOfLine_1 = null;
+        Scene.hexNum[] startOfLine_2 = null;
+        int angle;
 
         //Get the first element in hexCenter
-        start = new Scene.hexNum{
+        /*start = new Scene.hexNum{
             num_x = 0,
             num_z = 0
         };
         end = Scene.GetNextHexagonCenter(0, -1);
+
+        startAxis = Hexagon.NumToAxis(start.num_x, start.num_z);
+        endAxis = Hexagon.NumToAxis(end.num_x, end.num_z);
+        angle = Hexagon.NearestAngleForCamera(startAxis, endAxis);
+
+        Debug.Log("start_x: "+start.num_x);
+        Debug.Log("start_z: "+start.num_z);
+        Debug.Log("end_x: "+end.num_x);
+        Debug.Log("end_z: "+end.num_z);
         line = Hexagon.GetLineBetweenPointsOffset(start, end);
         Utils.Add(ref line, start);
-        PlaceHexagon(line, hex[1]); //sand
+        PlaceHexagon(line, hex[1], add_angle:true, angle:angle); //sand
 
-        for(int k=0; k<9; k++)
+        line = Hexagon.GetNoisyEdgesBetweenPointsOffset(start, end, 1, 0.4f);
+        PlaceHexagon(line, hex[2], add_angle:true, angle:angle); //stone
+        
+        line = Hexagon.GetTwistedEdgesBetweenPointsOffset(start, end, 0.6f);
+        PlaceHexagon(line, hex[3], add_angle:true, angle:angle); //water */
+
+        int total = Scene.longArea? 1:9;
+        for(int k=0; k<total; k++)
         {
             for (int i=0; i<Scene.hexCenter[k].Length;i++)
             {
-                start = Scene.hexCenter[k][i];
-                end = Scene.GetNextHexagonCenter(k, i);
+                start = Scene.hexCenter[k][i].end;
+                end = Scene.GetNextHexagonCenter(k, i).start;
+
+                startAxis = Hexagon.NumToAxis(start.num_x, start.num_z);
+                endAxis = Hexagon.NumToAxis(end.num_x, end.num_z);
+                angle = Hexagon.NearestAngleForCamera(startAxis, endAxis);
+
                 if (end.num_x == -1) break; // reach end of center -> change to goal later
 
                 line = Hexagon.GetLineBetweenPointsOffset(start, end);
-                PlaceHexagon(line, hex[1]); //sand
-
+                if (line!=null)
+                    startOfLine = PlaceHexagon(line, hex[1], add_angle:true, angle:angle); //sand
+                //Debug.Log(i+" "+line.Length);
 
                 int level = 1;
-                //int distance = Hexagon.DistanceBetweenPointsOffset(start, end);
-                //if (distance >= 64) level = 3;
-                //if (distance >= 32) level = 2;
-                //else if (distance >= 8) level = 1;
+                int distance = Hexagon.DistanceBetweenPointsOffset(start, end);
+                if (distance >= 16) level = 3;
+                if (distance >= 8) level = 2;
+                else if (distance >= 4) level = 1;
 
                 line = Hexagon.GetNoisyEdgesBetweenPointsOffset(start, end, level, 0.4f);
-                PlaceHexagon(line, hex[2]); //stone
+                if (line!=null)
+                    startOfLine_1 = PlaceHexagon(line, hex[2], add_angle:true, angle:angle); //stone
                 
-                line = Hexagon.GetTwistedEdgesBetweenPointsOffset(start, end, 1f);
-                PlaceHexagon(line, hex[3]); //blue
+                line = Hexagon.GetTwistedEdgesBetweenPointsOffset(start, end, 0.6f);
+                if (line!=null)
+                    startOfLine_2 = PlaceHexagon(line, hex[3], add_angle:true, angle:angle); //water
                 
+                //Debug.Assert(startOfLine.num_x != -1, "No start of line in ConnectAllHexagons: "+i);
+                //Debug.Log("Start: "+start.num_x+" "+start.num_z);
+                //Debug.Log("End: "+end.num_x+" "+end.num_z);
+                if (startOfLine!=null && startOfLine.Length!=0)
+                {
+                    int j = 0;
+                    while(j < startOfLine.Length)
+                    {
+                        bool placeSuccess = PlaceRoadSign(startOfLine[j++], angle);
+                        //Debug.Assert(placeSuccess, "Not successful when placing road sign: "+i);
+                        if (placeSuccess) break;
+                    }
+
+                    if (startOfLine_1!= null)
+                        Utils.Add(ref startOfLine, startOfLine_1);
+                    if (startOfLine_2!= null)
+                        Utils.Add(ref startOfLine, startOfLine_2);
+                    
+                    InsertSpeedDownModule(startOfLine);
+                    InsertBombModule(startOfLine);
+                    /*if (i%2 == 1) // Insert SpeedUp Module
+                        InsertSpeedUpJumpModule(startOfLine, distance, angle, SpeedUp: true);
+                    else    // Insert Jump Module
+                        InsertSpeedUpJumpModule(startOfLine, distance, angle, SpeedUp: false);*/
+                    if (i%2 == 1)   //Insert Jump Module
+                        InsertSpeedUpJumpModule(startOfLine, distance, angle, SpeedUp: false);
+                    InsertSpeedUpJumpModule(startOfLine, distance, angle, SpeedUp: true);
+                }
             }
         }
     }
 
-    void PlaceHexagon(Scene.hexNum[] array, GameObject obj)
+    void InsertSpeedUpJumpModule(Scene.hexNum[] line, int distance, int angle, bool SpeedUp)
     {
-        for (int j=0; j<array.Length; j++)
-            PlaceHexagon(array[j].num_x, array[j].num_z, obj);
+        int sample_count, order, choose, num;
+        int angle_reverse;
+        int len = line.Length;
+        int countUp, countDown;
+        Scene.hexNum tmp, tmpStart;
+        string objectName = (SpeedUp?"speedUp":"jump")+"(Clone)";
+
+        for (int i=1; i<=distance/8; i++)
+        {
+            sample_count = 0;
+            while(true) {
+                sample_count += 1;
+                if(sample_count >= 8) break;
+
+                countUp = 0;
+                countDown = 0;
+
+                order = UnityEngine.Random.Range(0, len);
+                tmp = line[order];
+
+                //Utils.DebugDrawPoint(tmp, angle, Color.blue);
+
+                while (true)
+                {
+                    tmp = Hexagon.GetHexByAngle(tmp, angle);
+                    if (tmp.num_x==-1 || tmp.num_z==-1) break;
+                    num = Scene.GetOneDimensionVal(tmp.num_x, tmp.num_z);
+                    if (!Scene.hexOccupied[num]) break;
+                    if (Scene.map[num].name == objectName) break;
+                    if (Scene.map[num].name == "bomb(Clone)") break;
+                    if (Scene.map[num].GetComponent<HexagonParam>().scanned == true) break;
+
+                    //Utils.DebugDrawPoint(tmp, angle, Color.red);
+                    Scene.map[num].GetComponent<HexagonParam>().scanned = true;
+                    countUp++;
+                }
+
+                tmp = line[order];
+                tmpStart = tmp;
+                while (true)
+                {
+                    angle_reverse = -(180-angle);
+                    if (angle_reverse < -150) angle_reverse += 360;
+                    tmp = Hexagon.GetHexByAngle(tmp, angle_reverse);
+                    if (tmp.num_x==-1 || tmp.num_z==-1) break;
+                    num = Scene.GetOneDimensionVal(tmp.num_x, tmp.num_z);
+                    if (!Scene.hexOccupied[num]) break;
+                    if (Scene.map[num].name == objectName) break;
+                    if (Scene.map[num].name == "bomb(Clone)") break;
+                    if (Scene.map[num].GetComponent<HexagonParam>().scanned == true) break;
+                    
+                    tmpStart = tmp;
+
+                    //Utils.DebugDrawPoint(tmp, angle, Color.green);
+                    Scene.map[num].GetComponent<HexagonParam>().scanned = true;
+                    countDown++;
+                }
+
+                //tmpStart = Hexagon.GetHexByAngle(tmp, angle);
+                //Utils.DebugDrawPoint(tmpStart, angle, Color.yellow);
+
+                int totalLen = countUp+countDown+1;
+                if (totalLen>=9)
+                {
+                    choose = UnityEngine.Random.Range(2, totalLen-6);
+                    //Debug.Log("choose: "+choose);
+                    for (int j=1; j<=choose; j++)
+                        tmpStart = Hexagon.GetHexByAngle(tmpStart, angle);
+
+                    if (SpeedUp)
+                    {
+                        ReplaceObject(tmpStart, hex[4]);
+
+                        for (int j=1; j<=5; j++)
+                        {
+                            tmpStart = Hexagon.GetHexByAngle(tmpStart, angle);
+                            num = Scene.GetOneDimensionVal(tmpStart.num_x, tmpStart.num_z);
+                            //Debug.Log("tmpStart: "+tmpStart.num_x+" "+tmpStart.num_z);
+                            if (Scene.map[num].name == "speedDown(Clone)")
+                            {
+                                ReplaceObject(tmpStart, hex[1]);
+                            }
+                        }
+                        break;
+                    }
+                    else {
+                        ReplaceObject(tmpStart, hex[6]);
+                        for (int j=1; j<=2; j++)
+                        {
+                            tmpStart = Hexagon.GetHexByAngle(tmpStart, angle);
+                            num = Scene.GetOneDimensionVal(tmpStart.num_x, tmpStart.num_z);
+                            if (UnityEngine.Random.Range(0, 1f) < 0.5)
+                                Destroy(Scene.map[num]);
+                        }
+                    }
+                }
+            }
+        }
     }
 
-    void PlaceHexagon(int x, int z, GameObject obj, bool place_coin=true)
+    void InsertSpeedDownModule(Scene.hexNum[] line)
+    {
+        int sample_count, order, num;
+        bool pair;
+        Scene.hexNum tmp;
+        bool[] result = new bool[8];
+        Scene.hexNum[] tmpNeighbour;
+        for (int i=1; i<=line.Length/15; i++)
+        {
+            sample_count = 0;
+            pair = true;
+            while(true) {
+                sample_count += 1;
+                if(sample_count >= 5) break;
+
+                order = UnityEngine.Random.Range(0, line.Length);
+                tmp = line[order];
+                if (!GetHexExistence(tmp))  continue;
+
+                tmpNeighbour = Hexagon.GetNeighbourHex(tmp);
+                Utils.Add(ref tmpNeighbour, Hexagon.GetLeftUpHex(tmpNeighbour[0]));
+                Utils.Add(ref tmpNeighbour, Hexagon.GetRightUpHex(tmpNeighbour[1]));
+
+                for (int j=0; j<tmpNeighbour.Length; j++)
+                {
+                    result[j] = GetHexExistence(tmpNeighbour[j]);
+                }
+                
+                pair &= (result[0]&&result[3]&&result[6]) || (!result[3]);
+                pair &= (result[1]&&result[4]&&result[7]) || (!result[4]);
+                //pair &= (result[2]&&result[5]) || (!result[2]&&!result[5]);
+
+                if (pair && (result[3]||result[4]))
+                {
+                    ReplaceObject(tmp, hex[5]);
+                    for (int j=0; j<tmpNeighbour.Length; j++)
+                    {
+                        if (result[j])
+                        {
+                            num = Scene.GetOneDimensionVal(tmpNeighbour[j].num_x, tmpNeighbour[j].num_z);
+                            Scene.map[num].GetComponent<HexagonParam>().scanned = true;
+                        }
+                    }
+
+                    break;
+                }
+            }
+        }
+    }
+
+    void InsertBombModule(Scene.hexNum[] line)
+    {
+        int sample_count, order, num;
+        bool[] result = new bool[6];
+        Scene.hexNum tmp;
+        Scene.hexNum[] tmpNeighbour;
+        for (int i=1; i<=line.Length/35; i++)
+        {
+            sample_count = 0;
+            while(true) {
+                sample_count += 1;
+                if(sample_count >= 5) break;
+
+                order = UnityEngine.Random.Range(0, line.Length);
+                tmp = line[order];
+                if (!GetHexExistence(tmp))  continue;
+
+                tmpNeighbour = Hexagon.GetNeighbourHex(tmp);
+                for (int j=0; j<tmpNeighbour.Length; j++)
+                {
+                    result[j] = GetHexExistence(tmpNeighbour[j]);
+                }
+
+                if ((result[0]&&result[4]&&result[5])||(result[1]&&result[2]&&result[3]))
+                {
+                    ReplaceObject(tmp, hex[9]);
+                    for (int j=0; j<tmpNeighbour.Length; j++)
+                    {
+                        if (result[j])
+                        {
+                            num = Scene.GetOneDimensionVal(tmpNeighbour[j].num_x, tmpNeighbour[j].num_z);
+                            Scene.map[num].GetComponent<HexagonParam>().scanned = true;
+                        }
+                    }
+
+                    break;
+                }
+            }
+        }
+    }
+
+    bool GetHexExistence(Scene.hexNum hexN)
+    {
+        if (hexN.num_x == -1 || hexN.num_z == -1)  return false;
+        int num = Scene.GetOneDimensionVal(hexN.num_x, hexN.num_z);
+        if (!Scene.hexOccupied[num]) return false;
+        try {
+            if (Scene.map[num].name == "speedDown(Clone)") return false;
+        }
+        catch (Exception e)
+        {
+            Debug.Log("hexN.num_x: "+hexN.num_x);
+            Debug.Log("hexN.num_z: "+hexN.num_z);
+            return false;
+        }
+        return true;
+    }
+
+    void ReplaceObject(Scene.hexNum hexN, GameObject obj)
+    {
+        int num = Scene.GetOneDimensionVal(hexN.num_x, hexN.num_z);
+        int angle = Scene.map[num].GetComponent<HexagonParam>().angle;
+        bool follow = Scene.map[num].GetComponent<HexagonParam>().follow;
+        Destroy(Scene.map[num]);
+
+        if (Scene.coinOccupied[num])
+            Destroy(Scene.coin[num]);
+
+        Vector3 pos = GetPosFromHexNum(hexN.num_x, hexN.num_z);
+        Scene.map[num] = Instantiate(obj, pos, Quaternion.identity, transform);
+        Scene.map[num].layer = 9;
+        Scene.map[num].GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
+        Scene.map[num].AddComponent<HexagonParam>();
+        Scene.map[num].GetComponent<HexagonParam>().angle = angle;
+        Scene.map[num].GetComponent<HexagonParam>().follow = follow;
+        Scene.map[num].GetComponent<HexagonParam>().scanned = true;
+    }
+
+    Vector3 GetPosFromHexNum(int x, int z)
+    {
+        Scene.hexAxis hexA;
+        Vector3 pos;
+        hexA = Hexagon.NumToAxis(x, z);
+        pos.x = hexA.axis_x;
+        pos.z = hexA.axis_z;
+        pos.y = 0;
+        return pos;
+    }
+
+    bool PlaceRoadSign(Scene.hexNum start, int angle)
+    {
+        GameObject obj = (GameObject)Resources.Load("Prefabs/sign");
+        Dictionary<int, int[]> dict = new Dictionary<int, int[]>() {
+            {30, new int[]{3, 4, 5, 0, 1, 2}},
+            {90, new int[]{4, 5, 0, 1, 2, 3}},
+            {150, new int[]{5, 0, 1, 2, 3, 4}},
+            {-150, new int[]{0, 1, 2, 3, 4, 5}},
+            {-90, new int[]{1, 2, 3, 4, 5, 0}},
+            {-30, new int[]{2, 3, 4, 5, 0, 1}},
+        };
+        Scene.hexNum[] neighbour = Hexagon.GetNeighbourHex(start);
+        int[] order = dict[angle];
+
+        int num;
+        Vector3 pos;
+        Scene.hexNum hexN;
+        Scene.hexAxis hexA;
+
+        for (int i=0; i<=5; i++)
+        {
+            hexN = neighbour[order[i]];
+            if (hexN.num_x==-1 && hexN.num_z==-1) continue;
+            num = Scene.GetOneDimensionVal(hexN.num_x, hexN.num_z);
+            if (!Scene.hexOccupied[num] && !Scene.sceneOccupied[num])
+            {
+                pos = GetPosFromHexNum(hexN.num_x, hexN.num_z);
+                Scene.map[num] = Instantiate(obj, pos, Quaternion.Euler(0, 90+angle, 0), transform);
+                Scene.sceneOccupied[num] = true;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    Scene.hexNum[] PlaceHexagon(Scene.hexNum[] array, GameObject obj, bool add_angle=false, int angle=0, bool follow=false)
+    {
+        bool placeResult;
+        Scene.hexNum[] val = new Scene.hexNum[0];
+        for (int j=0; j<array.Length; j++)
+        {
+            placeResult = PlaceHexagon(array[j].num_x, array[j].num_z, obj, add_angle:add_angle, angle:angle, follow:follow);
+            if (placeResult)
+            {
+                Utils.Add(ref val, array[j]);
+            }
+        }
+        return val; // the first placed hexagon in the array
+    }
+
+    bool PlaceHexagon(int x, int z, GameObject obj, bool place_coin=true, bool add_angle=false, int angle=0, bool follow=false, bool show_minimap=true, bool isHex=true)
     {
         int num;
         Scene.hexAxis hexA;
         Vector3 pos;
 
         num = Scene.GetOneDimensionVal(x, z);
-        if (!Scene.mapOccupied[num])
+        if (!Scene.hexOccupied[num] && !Scene.sceneOccupied[num])
         {
-            hexA = Hexagon.NumToAxis(x, z);
-            pos.x = hexA.axis_x;
-            pos.z = hexA.axis_z;
-            pos.y = 0;
+            pos = GetPosFromHexNum(x, z);
 
             if (pos.x==0&&pos.z==0)
             {
                 obj = hex[8];
             }
 
-            else if (place_coin && Random.Range(0f, 1f) < 0.05 && !(pos.x==0&&pos.z==0))
+            /*else if (place_coin && UnityEngine.Random.Range(0f, 1f) < 0.05 && !(pos.x==0&&pos.z==0))
             {
-                obj = hex[4+Random.Range(0, 3)];
-            }
+                //obj = hex[4+UnityEngine.Random.Range(0, 3)];
+                //obj = hex[5];
+                obj = hex[9];
+            }*/
 
             Scene.map[num] = Instantiate(obj, pos, Quaternion.identity, transform);
-            Scene.mapOccupied[num] = true;
+            if (show_minimap)
+            {
+                Scene.map[num].layer = 9;
+                Scene.map[num].GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
+            }
+
+            if (isHex)
+                Scene.hexOccupied[num] = true;
+            else Scene.sceneOccupied[num] = true;
+
+            if (add_angle)
+            {
+                Scene.map[num].AddComponent<HexagonParam>();
+                if (follow) Scene.map[num].GetComponent<HexagonParam>().follow = true;
+                else {
+                    Scene.map[num].GetComponent<HexagonParam>().follow = false;
+                    Scene.map[num].GetComponent<HexagonParam>().angle = angle;
+                }
+            }
+
+            if (pos.x==0&&pos.z==0)
+            {
+                Scene.map[num].AddComponent<HexagonParam>();
+                Scene.map[num].GetComponent<HexagonParam>().follow = false;
+                Scene.map[num].GetComponent<HexagonParam>().angle = 30;
+            }
 
             // place coin
-            if (place_coin && Random.Range(0f, 1f) < 0.1 && !(pos.x==0&&pos.z==0))
+            if (place_coin && !(pos.x==0&&pos.z==0))
                 {
-                    pos.y = 0.71f;
-                    Instantiate(coin, pos, Quaternion.identity, transform);
+                    float randVal = UnityEngine.Random.Range(0f, 1f);
+                    if (randVal < 0.1)
+                    {
+                        pos.y = 0.71f;
+                        Scene.coin[num] = Instantiate(coin, pos, Quaternion.identity, transform);
+                        Scene.coinOccupied[num] = true;
+                    }
+                    else if (randVal < 0.11)
+                    {
+                        pos.y = 1f;
+                        Scene.coin[num] = Instantiate(diamond, pos, Quaternion.identity, transform);
+                        Scene.coinOccupied[num] = true;
+                    }
                 }
+            
+            return true;
         }
+        return false;
     }
 
     GameObject PlaceSceneObject(int x, int z, int height, int width, GameObject obj)
@@ -360,7 +888,7 @@ public class GenerateScene : MonoBehaviour
         Scene.hexAxis hexA;
         Vector3 pos;
 
-        Scene.SetRectAreaOccupancy(x, z, height, width);
+        Scene.SetRectAreaOccupancy(x, z, height, width, sceneOccupancy: true);
         hexA = Scene.GetRectAreaCenter(x, z, height, width);
         pos.x = hexA.axis_x - obj.GetComponent<Space>().bias_x;
         pos.z = hexA.axis_z - obj.GetComponent<Space>().bias_z;
@@ -386,10 +914,10 @@ public class GenerateScene : MonoBehaviour
                 sample_count += 1;
                 if(sample_count >= count) break;
 
-                x = Random.Range(0, Scene.areaLength-height);
-                z = Random.Range(0, Scene.areaLength-width);
-                //x = Random.Range(0, 50-height);
-                //z = Random.Range(0, 50-width);
+                x = UnityEngine.Random.Range(0, Scene.areaHeight-height);
+                z = UnityEngine.Random.Range(0, Scene.areaWidth-width);
+                //x = UnityEngine.Random.Range(0, 50-height);
+                //z = UnityEngine.Random.Range(0, 50-width);
 
                 if(Scene.JudgeRectAreaOccupancy(x, z, height, width))
                 {
@@ -401,7 +929,7 @@ public class GenerateScene : MonoBehaviour
         }
     }
 
-    void PlaceHexagonPattern(int height, int width, GameObject obj, int count, int place_num, int lower_bound, int upper_bound, int edge_distance, bool use_xz=false, int static_x=-1, int static_z=-1, bool checkpoint=false, int num=-1, int total=-1)
+    void PlaceHexagonPattern(int height, int width, GameObject obj, int count, int place_num, int lower_bound, int upper_bound, int edge_distance, bool use_xz=false, int static_x=-1, int static_z=-1, bool checkpoint=false, int num=-1, int total=-1, bool place_AI=false)
     {
         GameObject obj_new;
         // use_xz = true: for placing checkpoint
@@ -411,53 +939,104 @@ public class GenerateScene : MonoBehaviour
             sample_count += 1;
             if(sample_count >= count) break;
 
+            int radius = Mathf.FloorToInt(Mathf.Max(height/2f, width/2f))+1+UnityEngine.Random.Range(lower_bound, upper_bound+1); //3 -> function(width/height)
+
             if (use_xz && static_x != -1 && static_z != -1) {
                 x = static_x;
                 z = static_z;
             }
             else {
-                x = Random.Range(0, Scene.areaLength-height);
-                z = Random.Range(0, Scene.areaLength-width);
-                //x = Random.Range(0, 50-height);
-                //z = Random.Range(0, 50-width);
+                x = UnityEngine.Random.Range(radius+2, Scene.areaHeight-radius-2);
+                z = UnityEngine.Random.Range(radius+2, Scene.areaWidth-radius-2);
+                //x = UnityEngine.Random.Range(0, 50-height);
+                //z = UnityEngine.Random.Range(0, 50-width);
             }
 
-            int radius = Mathf.FloorToInt(Mathf.Max(height/2f, width/2f))+1+Random.Range(lower_bound, upper_bound+1); //3 -> function(width/height)
+            if (!Scene.JudgeWidthOccupancy(z-(radius+1), 2*(radius+1)+1)) continue;
 
             Scene.hexNum hexN = new Scene.hexNum {num_x=x, num_z=z};
             Scene.hexNum[] ring = Hexagon.GetSpiralRing(hexN, radius);
             if (ring == null) continue;
-
-            if(Scene.JudgeAreaOccupancy(ring))
+            Scene.hexNum[] ring_all = ring;
+            while(true)
             {
-                Scene.AddHexagonCenter(hexN);
-                int min_x = ring[6*radius-7].num_x;
-                int max_x = ring[3*radius-4].num_x;
-                int min_z = ring[radius-2].num_z;
-                int max_z = ring[4*radius-5].num_z;
-
-                while(true) {
-                    x1 = Random.Range(min_x+edge_distance, max_x-height-edge_distance+1);
-                    z1 = Random.Range(min_z+edge_distance, max_z-width-edge_distance+1);
-                    if (Scene.JudgeRectInRing(x1, z1, height, width, ring))
-                    {
-                        //if (use_xz)
-                            //PlaceHexagon(x1, z1, obj);
-                        //else
-                        obj_new = PlaceSceneObject(x1, z1, height, width, obj);
-                        if (checkpoint && num!=-1 && total!=-1)
-                        {
-                            obj_new.GetComponent<Checkpoint>().num = num;
-                            obj_new.GetComponent<Checkpoint>().total = total;
-                        }
-                        PlaceHexagon(ring, hex[0]); //grass
-                        place_count += 1;
-                        break;
-                    }
-                }
-
-                if (place_count == place_num) break;
+                Scene.hexNum[] ring_external = Hexagon.GetRing(hexN, radius+1);
+                if (ring_external == null) break;
+                Scene.hexNum[] ring_external_2 = Hexagon.GetRing(hexN, radius+2);
+                if (ring_external_2 != null)
+                    Utils.Add(ref ring_external, ring_external_2);
+                Utils.Add(ref ring_all, ring_external);
+                break;
             }
+
+            if(!Scene.JudgeAreaOccupancy(ring_all)) continue;
+            
+            Scene.AddHexagonCenter(hexN, hexN, same:true);
+
+            Scene.SetWidthOccupancy(z-(radius+1), 2*(radius+1)+1);
+
+            int min_x = ring[6*radius-7].num_x;
+            int max_x = ring[3*radius-4].num_x;
+            int min_z = ring[radius-2].num_z;
+            int max_z = ring[4*radius-5].num_z;
+
+            while(true) {
+                x1 = UnityEngine.Random.Range(min_x+edge_distance, max_x-height-edge_distance+1);
+                z1 = UnityEngine.Random.Range(min_z+edge_distance, max_z-width-edge_distance+1);
+                if (Scene.JudgeRectInRing(x1, z1, height, width, ring))
+                {
+                    //if (use_xz)
+                        //PlaceHexagon(x1, z1, obj);
+                    //else
+                    obj_new = PlaceSceneObject(x1, z1, height, width, obj);
+                    if (checkpoint && num!=-1 && total!=-1)
+                    {
+                        obj_new.GetComponent<Checkpoint>().num = num;
+                        obj_new.GetComponent<Checkpoint>().total = total;
+                    }
+                    PlaceHexagon(ring, hex[0], add_angle:true, follow:true); //grass
+                    InsertSpeedDownModule(ring);
+                    InsertBombModule(ring);
+
+                    if (place_AI)
+                    {
+                        while(true)
+                        {
+                            int randomPos = UnityEngine.Random.Range(0, ring.Length);
+                            int tmpNum = Scene.GetOneDimensionVal(ring[randomPos].num_x, ring[randomPos].num_z);
+                            if (Scene.hexOccupied[tmpNum] && Scene.map[tmpNum].name == "grass(Clone)")
+                            {
+                                Vector3 pos = GetPosFromHexNum(ring[randomPos].num_x, ring[randomPos].num_z);
+                                pos.y = 0.5f;
+                                GameObject AI = Instantiate(AICharacter, pos, Quaternion.Euler(0, 30, 0), transform.parent.GetChild(0));
+
+                                // Find two reborn places
+                                AI.GetComponentInChildren<AICharacter>().Reborn1 = pos;
+
+                                int rand = tmpNum + ring.Length/2;
+                                rand %= ring.Length;
+                                while (true)
+                                {
+                                    int tmpNum2 = Scene.GetOneDimensionVal(ring[rand].num_x, ring[rand].num_z);
+                                    if (Scene.hexOccupied[tmpNum2] && Scene.map[tmpNum2].name == "grass(Clone)")
+                                        break;
+                                    rand--;
+                                    rand %= ring.Length;
+                                }
+                                pos = GetPosFromHexNum(ring[rand].num_x, ring[rand].num_z);
+                                pos.y = 0.5f;
+                                AI.GetComponentInChildren<AICharacter>().Reborn2 = pos;
+                                break;
+                            }
+                        }
+                    }
+
+                    place_count += 1;
+                    break;
+                }
+            }
+
+            if (place_count == place_num) break;
             
         }
     }
@@ -472,16 +1051,18 @@ public class GenerateScene : MonoBehaviour
             height = objects[i].GetComponent<Space>().height;
             width = objects[i].GetComponent<Space>().width;
 
-            PlaceHexagonPattern(height, width, objects[i], count, num[i], 2, 3, 2);
+            //if (i==0)
+            PlaceHexagonPattern(height, width, objects[i], count, num[i], 2, 3, 2, place_AI:true);
+            //else PlaceHexagonPattern(height, width, objects[i], count, num[i], 2, 3, 2, place_AI:false);
         }
     }
 
-    void PlaceCheckpointHexagonPatterns(int place_num, Scene.hexNum[] pos, int count)
+    void PlaceCheckpointHexagonPatterns(Scene.hexNum[] pos, int count)
     {
         GameObject obj = (GameObject)Resources.Load("Prefabs/Hex/checkpoint");
         int height = obj.GetComponent<Space>().height;
         int width = obj.GetComponent<Space>().width;
-        for (int i=0; i<place_num; i++)
-            PlaceHexagonPattern(height, width, obj, count, 1, 2, 3, 2, true, pos[i].num_x, pos[i].num_z, true, i, place_num);
+        for (int i=0; i<pos.Length; i+=2)
+            PlaceHexagonPattern(height, width, obj, count, 1, 3, 4, 3, true, pos[i].num_x, pos[i].num_z, true, i, pos.Length);
     }
 }
