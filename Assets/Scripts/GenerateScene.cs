@@ -91,23 +91,23 @@ public class GenerateScene : MonoBehaviour
     };
 
     int[] small_object_num = {
-        15, //"Tree-01", 4*5
-        15, //"Tree-03", 5*5
-        15, //"Tree-04", 3*4
-        15, //"Tree-05", 2*3
-        5, //"RoadFenceWood_Damaged-01", 3*3
-        5, //"RoadFenceWood_Lrg-01", 2*4
-        5, //"RoadFenceWood_Sml-03", 2*1
+        20, //"Tree-01", 4*5
+        20, //"Tree-03", 5*5
+        20, //"Tree-04", 3*4
+        20, //"Tree-05", 2*3
+        10, //"RoadFenceWood_Damaged-01", 3*3
+        10, //"RoadFenceWood_Lrg-01", 2*4
+        10, //"RoadFenceWood_Sml-03", 2*1
         30, //"RockMed-02", 2*1
         25,//"ShrubTall-01", 2*2
         30, //"ShrubTall-02", 1*1
         30, //"TreeLog_B-02", 2*1
         30, //"TreeLog_B-03", 2*2
-        7, //"TreeStump_A-02", 2*2
-        7, //"TreeStump_B-03", 2*2
-        6, //"RoadSign-01", 2*2
-        7, //"RoadLamp-01", 1*1
-        7, //"PondReed-02", 1*1
+        15, //"TreeStump_A-02", 2*2
+        15, //"TreeStump_B-03", 2*2
+        12, //"RoadSign-01", 2*2
+        15, //"RoadLamp-01", 1*1
+        15, //"PondReed-02", 1*1
         /*
         50, //"RockSml-02", 1*1
         50, //"ShrubShort-02", 1*1
@@ -155,19 +155,19 @@ public class GenerateScene : MonoBehaviour
     };
 
     int[] large_object_num = {
-        3, //"Oak-02", 12*10
+        5, //"Oak-02", 12*10
         //2, //"Pond_Boardwalk-02", 8*5
-        2, //"TreeBirch-05", 8*8
-        2, //"TreeBirch-02", 7*8
-        2, //"Tree-05", 10*12
-        2, //"Tree-03", 9*11
-        2, //"Tree-02", 7*10
-        2, //"Tree-04", 7*10
-        2, //"Tree-01", 7*9
-        1, //"TreeBirch-01", 4*4
-        2, //"TreeDead-01", 5*6
-        2, //"TreeDead-02", 4*3
-        1 //"Birch-03", 8*8
+        5, //"TreeBirch-05", 8*8
+        5, //"TreeBirch-02", 7*8
+        5, //"Tree-05", 10*12
+        5, //"Tree-03", 9*11
+        5, //"Tree-02", 7*10
+        5, //"Tree-04", 7*10
+        5, //"Tree-01", 7*9
+        5, //"TreeBirch-01", 4*4
+        5, //"TreeDead-01", 5*6
+        5, //"TreeDead-02", 4*3
+        5 //"Birch-03", 8*8
     };
 
     int[] idleAreaInPattern;
@@ -546,10 +546,7 @@ public class GenerateScene : MonoBehaviour
         }
 
         //Debug.Assert(doorInCount==doorOutCount, "In & Out doors number don't match");
-        int[] numArray = new int[doorOutCount];
-        for (int k=0; k<doorOutCount; k++)
-            numArray[k] = k;
-        numArray = Utils.GetRandomNum(numArray);
+        int[] numArray = Utils.GetRandomNum(doorOutCount);
         for (int k=0; k<doorOutCount; k++)
             SetDoorPair(doorInScripts[k], doorOutScripts[numArray[k]]);
         if (doorOutCount == doorInCount-1)
@@ -1138,11 +1135,14 @@ public class GenerateScene : MonoBehaviour
     {
         GameObject[] objects = new GameObject[name.Length];
         int height, width, sample_count, place_count, x, z;
+
+        int[] order = Utils.GetRandomNum(name.Length);
         for (int i=0; i<name.Length; i++)
         {
-            objects[i] = (GameObject)Resources.Load(dir+name[i]);
-            height = objects[i].GetComponent<Space>().height;
-            width = objects[i].GetComponent<Space>().width;
+            int k = order[i];
+            objects[k] = (GameObject)Resources.Load(dir+name[k]);
+            height = objects[k].GetComponent<Space>().height;
+            width = objects[k].GetComponent<Space>().width;
             sample_count = 0;
             place_count = 0;
 
@@ -1157,9 +1157,9 @@ public class GenerateScene : MonoBehaviour
 
                 if(Scene.JudgeRectAreaOccupancy(x, z, height, width))
                 {
-                    PlaceSceneObject(x, z, height, width, objects[i]);
+                    PlaceSceneObject(x, z, height, width, objects[k]);
                     place_count += 1;
-                    if (place_count == num[i]) break;
+                    if (place_count == num[k]) break;
                 }
             }
         }

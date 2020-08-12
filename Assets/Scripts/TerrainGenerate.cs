@@ -34,7 +34,7 @@ public class TerrainGenerate : MonoBehaviour
         meshFilter = GetComponent<MeshFilter>();
         meshCollider = GetComponent<MeshCollider>();
 
-        //Generate();
+       // Generate();
     }
 
     /*void Update()

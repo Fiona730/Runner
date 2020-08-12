@@ -81,12 +81,15 @@ public class Utils : MonoBehaviour
         return angle;
     }
 
-    public static int[] GetRandomNum(int[] num)
+    public static int[] GetRandomNum(int length)
     {
-        for (int i = 0; i < num.Length; i++)
+        int[] num = new int[length];
+        for (int i = 0; i < length; i++)
+            num[i] = i;
+        for (int i = 0; i < length; i++)
         {
             int tmp = num[i];
-            int randomIndex = UnityEngine.Random.Range(0, num.Length);
+            int randomIndex = UnityEngine.Random.Range(0, length);
             num[i] = num[randomIndex];
             num[randomIndex] = tmp;
         }
