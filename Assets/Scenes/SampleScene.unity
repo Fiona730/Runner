@@ -2009,7 +2009,7 @@ MonoBehaviour:
   distanceAway: 3
   smooth: 5
   x_angle: 30
-  y_angle: 90
+  y_angle: -30
 --- !u!114 &466277967
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4116,7 +4116,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1059771725}
   m_LocalRotation: {x: 0, y: 0.2588191, z: 0, w: 0.9659258}
-  m_LocalPosition: {x: -5.000001, y: 0.5, z: -8.660254}
+  m_LocalPosition: {x: -5, y: 0.5, z: -8.660254}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
   - {fileID: 687313730}
@@ -4622,6 +4622,8 @@ MonoBehaviour:
   dieClip: {fileID: 8300000, guid: b4ec207adf9b63f4cbeccce20d327de7, type: 3}
   bombParticle: {fileID: 1822131686}
   minimap: {fileID: 888561451}
+  waitToTurn: 0
+  waitToTransmit: 0
 --- !u!4 &1190809171
 Transform:
   m_ObjectHideFlags: 0
@@ -5734,7 +5736,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1381543097}
   m_LocalRotation: {x: 0, y: 0.2588191, z: 0, w: 0.9659258}
-  m_LocalPosition: {x: -5.000001, y: 0.5, z: -8.660254}
+  m_LocalPosition: {x: -5, y: 0.5, z: -8.660254}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
@@ -5809,6 +5811,7 @@ MonoBehaviour:
   vcamNoTurn: {fileID: 466277967}
   vcamF: 0
   gameRestart: 0
+  transmit: 0
 --- !u!1 &1391400754
 GameObject:
   m_ObjectHideFlags: 0

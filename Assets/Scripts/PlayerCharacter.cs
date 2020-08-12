@@ -56,6 +56,7 @@ public class PlayerCharacter : Character
     // Update is called once per frame
     void FixedUpdate()
     {
+        //Debug.Log("Player rot: "+transform.eulerAngles.y);
         if (animator)
         {
             animator.SetBool("InGround", inGround);
@@ -66,7 +67,8 @@ public class PlayerCharacter : Character
         /*if (isAlive && !inGround) {
             SetParticleSystem(3);
         }*/
-        //Debug.DrawLine(transform.position+transform.forward*0.2f, transform.position+transform.forward*1f, Color.red, 0.1f);
+        
+        //Debug.DrawLine(transform.position+transform.forward*0.2f, transform.position+transform.forward*0.4f, Color.red, 10f);
         
         //arrow.transform.position = transform.position + transform.forward*0.3f + new Vector3(0, 0.25f, 0);
         //arrow.transform.localRotation = Quaternion.Euler(90, 0, 0);

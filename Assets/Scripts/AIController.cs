@@ -81,7 +81,7 @@ public class AIController : MonoBehaviour
             //if (Physics.Raycast(AIRay, out AIHit) && AIHit.collider.name=="character")
             {
                 //hexNext = GetHexNumFromPositon(collider.gameObject.transform.position + character.transform.forward*Scene.xDistanceHex);
-                angle = getVectorAngle(Vector3.forward, distance);
+                angle = Utils.getVectorAngle(Vector3.forward, distance);
                 angle = Mathf.RoundToInt((angle-30)/60) * 60 + 30;
                 hexNext = Hexagon.GetHexByAngle(hexN, angle);
 
@@ -118,7 +118,7 @@ public class AIController : MonoBehaviour
             turnPosition = new Vector3(hexA.axis_x, 0, hexA.axis_z);
             turnPosition.y = character.transform.position.y;
             v = Hexagon.CenterVectorBetweenTwoHex(hexN, walkable[walk]);
-            angle = getVectorAngle(character.transform.forward, v);
+            angle = Utils.getVectorAngle(character.transform.forward, v);
             //Debug.Log("global rot before: "+character.transform.eulerAngles.y);
             //Debug.Log("angle: "+angle);
             //Debug.Log("now: "+hexN.num_x+" "+hexN.num_z);
@@ -174,16 +174,6 @@ public class AIController : MonoBehaviour
             pointer = (pointer+1) % pastStepNum;
         }
         
-    }
-
-    int getVectorAngle(Vector3 from, Vector3 to)
-    {
-        //Debug.Log("from: "+from);
-        //Debug.Log("to: "+to);
-        int angle = Mathf.RoundToInt(Vector3.Angle(from, to));
-        if (Vector3.Cross(from, to).y<0)
-            angle = -angle;
-        return angle;
     }
 
     Scene.hexNum GetHexNumFromPositon(Vector3 position)

@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -154,20 +155,20 @@ public class Scene : MonoBehaviour
             //if (checkpointPos == null)
             checkpointPos = new hexNum[] {
                 new hexNum {
-                    num_x = Random.Range(5, areaHeight-5),
-                    num_z = areaWidth*1/5 + Random.Range(-2, 3)
+                    num_x = UnityEngine.Random.Range(5, areaHeight-5),
+                    num_z = areaWidth*1/5 + UnityEngine.Random.Range(-2, 3)
                 },
                 new hexNum {
-                    num_x = Random.Range(5, areaHeight-5),
-                    num_z = areaWidth*2/5 + Random.Range(-2, 3)
+                    num_x = UnityEngine.Random.Range(5, areaHeight-5),
+                    num_z = areaWidth*2/5 + UnityEngine.Random.Range(-2, 3)
                 },
                 new hexNum {
-                    num_x = Random.Range(5, areaHeight-5),
-                    num_z = areaWidth*3/5 + Random.Range(-2, 3)
+                    num_x = UnityEngine.Random.Range(5, areaHeight-5),
+                    num_z = areaWidth*3/5 + UnityEngine.Random.Range(-2, 3)
                 },
                 new hexNum {
-                    num_x = Random.Range(5, areaHeight-5),
-                    num_z = areaWidth*4/5 + Random.Range(-2, 3)
+                    num_x = UnityEngine.Random.Range(5, areaHeight-5),
+                    num_z = areaWidth*4/5 + UnityEngine.Random.Range(-2, 3)
                 },
             };
         }
@@ -175,20 +176,20 @@ public class Scene : MonoBehaviour
             //if (checkpointPos == null)
             checkpointPos = new hexNum[] {
                 new hexNum {
-                    num_x = Random.Range(3, 7),
-                    num_z = areaWidth*2/3 + Random.Range(-2, 3)
+                    num_x = UnityEngine.Random.Range(3, 7),
+                    num_z = areaWidth*2/3 + UnityEngine.Random.Range(-2, 3)
                 },
                 new hexNum {
-                    num_x = areaHeight*2/3 - Random.Range(1, 4),
-                    num_z = areaWidth - Random.Range(3, 7)
+                    num_x = areaHeight*2/3 - UnityEngine.Random.Range(1, 4),
+                    num_z = areaWidth - UnityEngine.Random.Range(3, 7)
                 },
                 new hexNum {
-                    num_x = areaHeight/3 + Random.Range(1, 4),
-                    num_z = Random.Range(3, 7)
+                    num_x = areaHeight/3 + UnityEngine.Random.Range(1, 4),
+                    num_z = UnityEngine.Random.Range(3, 7)
                 },
                 new hexNum {
-                    num_x = areaHeight - Random.Range(3, 7),
-                    num_z = areaWidth/3 + Random.Range(-2, 3)
+                    num_x = areaHeight - UnityEngine.Random.Range(3, 7),
+                    num_z = areaWidth/3 + UnityEngine.Random.Range(-2, 3)
                 },
             };
         }
@@ -326,7 +327,13 @@ public class Scene : MonoBehaviour
             for (int j=0; j<width; j++)
             {
                 int num = GetOneDimensionVal(start_x+i, start_z+j);
-                if (sceneOccupied[num] || hexOccupied[num]) return false;
+                try {
+                    if (sceneOccupied[num] || hexOccupied[num]) return false;
+                }
+                catch (Exception e)
+                {
+                    return false;
+                }
             }
         return true;
     }

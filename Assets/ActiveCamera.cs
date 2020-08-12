@@ -9,6 +9,7 @@ public class ActiveCamera : MonoBehaviour
     public CinemachineVirtualCameraBase vcamNoTurn;
     public bool vcamF;
     public bool gameRestart;
+    public bool transmit;
     CinemachineBrain brain;
 
     void Start () 
@@ -17,16 +18,18 @@ public class ActiveCamera : MonoBehaviour
 
         vcamF = true;
         gameRestart = false;
+        transmit = false;
 	    vcamFollow.MoveToTopOfPrioritySubqueue();
 	}
 
     void Update()
     {
-        if (gameRestart)
+        if (gameRestart || transmit)
         {
             //Debug.Log("Reach here");
             brain.m_DefaultBlend.m_Time = 0;
             gameRestart = false;
+            transmit = false;
             vcamNoTurn.VirtualCameraGameObject.SetActive(false);
             vcamFollow.VirtualCameraGameObject.SetActive(true);
             return;

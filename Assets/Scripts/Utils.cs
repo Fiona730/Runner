@@ -70,4 +70,26 @@ public class Utils : MonoBehaviour
 
         Debug.DrawLine(pos, pos+dir*0.5f, color, 10f);
     }
+
+    public static int getVectorAngle(Vector3 from, Vector3 to)
+    {
+        //Debug.Log("from: "+from);
+        //Debug.Log("to: "+to);
+        int angle = Mathf.RoundToInt(Vector3.Angle(from, to));
+        if (Vector3.Cross(from, to).y<0)
+            angle = -angle;
+        return angle;
+    }
+
+    public static int[] GetRandomNum(int[] num)
+    {
+        for (int i = 0; i < num.Length; i++)
+        {
+            int tmp = num[i];
+            int randomIndex = UnityEngine.Random.Range(0, num.Length);
+            num[i] = num[randomIndex];
+            num[randomIndex] = tmp;
+        }
+        return num;
+    }
 }

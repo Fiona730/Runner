@@ -14,7 +14,8 @@ public class PlayerController : MonoBehaviour
     public GameObject minimap;
     Vector3 turnPosition;
     Vector3 jumpHexPosition;
-    bool waitToTurn;
+    public bool waitToTurn;
+    public bool waitToTransmit;
     bool countJump;
     bool countSpeedUp;
     bool countSpeedDown;
@@ -39,6 +40,7 @@ public class PlayerController : MonoBehaviour
     public void Initialize()
     {
         waitToTurn = false;
+        waitToTransmit = false;
         countJump = false;
         countSpeedUp = false;
         countSpeedDown = false;
@@ -70,6 +72,17 @@ public class PlayerController : MonoBehaviour
         stop = Input.GetKeyDown(KeyCode.X);
         if (stop) character.Stop();
 
+        /*if (waitToTransmit)
+        {
+            Invoke("ControlLogic", 20f);
+            waitToTransmit = false;
+        }*/
+        ControlLogic();
+
+    }
+
+    void ControlLogic()
+    {
         character.gameTime += Time.deltaTime;
 
         //if (Scene.coinRestart)  Scene.coinRestart = false;
@@ -102,6 +115,7 @@ public class PlayerController : MonoBehaviour
             {
                 character.particle[4].Play();
                 AudioSource.PlayClipAtPoint(dieClip, transform.position);
+
                 character.Die();
             }
 
@@ -258,7 +272,6 @@ public class PlayerController : MonoBehaviour
 
             positionPreviousFrame = collider.transform.position;
         }
-
     }
 
 }

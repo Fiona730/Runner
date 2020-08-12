@@ -71,12 +71,12 @@ public class AICharacter : Character
                 {
                     if (player.diamondCount > 0)
                     {
+                        dieParticle.Play();
                         player.diamondCount -= 1;
                         AudioSource.PlayClipAtPoint(playerDieClip, transform.position);
                         // AI Change Place
-                        dieParticle.Play();
                         Vector3 distance = Reborn1 - collision.gameObject.transform.position;
-                        if (Mathf.Sqrt(distance.sqrMagnitude) < 3*Scene.xDistanceHex)
+                        if (Mathf.Sqrt(distance.sqrMagnitude) > 3*Scene.xDistanceHex)
                             transform.position = Reborn1;
                         else transform.position = Reborn2;
                     }

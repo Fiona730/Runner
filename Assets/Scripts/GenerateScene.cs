@@ -12,7 +12,7 @@ public class GenerateScene : MonoBehaviour
     public int checkpointNum;
     GameObject[] objects;
     GameObject[] hex;
-    GameObject finalCheckpoint, coin, diamond, AICharacter;
+    GameObject finalCheckpoint, coin, diamond, AICharacter, Portal;
     GameObject terrain;
     public static string[] hex_name = {
         "grass",
@@ -283,6 +283,7 @@ public class GenerateScene : MonoBehaviour
         coin = (GameObject)Resources.Load("Prefabs/coin");
         diamond = (GameObject)Resources.Load("Prefabs/diamond");
         AICharacter = (GameObject)Resources.Load("Prefabs/AI");
+        Portal = (GameObject)Resources.Load("Prefabs/Portal");
     }
 
     void PlaceStartHexagons()
@@ -311,7 +312,7 @@ public class GenerateScene : MonoBehaviour
             }
     }
 
-    void GenerateRandomArea(int lower_bound_height, int upper_bound_height, int lower_bound_width, int upper_bound_width, int times, bool use_xz=false, int static_x=-1, int static_z=-1)
+    void GenerateRandomArea(int lower_bound_height, int upper_bound_height, int lower_bound_width, int upper_bound_width, int times, bool use_xz=false, int static_x=-1, int static_z=-1, bool considerOccupancy=true)
     {
         int sample_count, x, z, height, width;
         for (int i=0; i<times; i++)
@@ -331,16 +332,17 @@ public class GenerateScene : MonoBehaviour
                     z = UnityEngine.Random.Range(0, Scene.areaWidth-width);
                 }
 
-                if (!Scene.JudgeWidthOccupancy(z, width+1)) continue;
+                if (considerOccupancy && !Scene.JudgeWidthOccupancy(z, width+1)) continue;
 
                 Scene.hexNum hexN = new Scene.hexNum {num_x=x, num_z=z};
                 Scene.hexNum[] area = Hexagon.GetRandomArea(hexN, height, width);
                 Scene.hexNum[] area_clean = area.ToList().GetRange(0, area.Length-2).ToArray();
 
-                if(Scene.JudgeAreaOccupancy(area_clean))
+                if(Scene.JudgeAreaOccupancy(area_clean) || !considerOccupancy)
                 {
                     //Scene.SetAreaOccupancy(area); -> Occupancy set in PlaceHexagon
                     PlaceHexagon(area_clean, hex[0], add_angle:true, follow:true); //grass
+                    if (!considerOccupancy) return;
 
                     //Scene.hexNum center = Scene.HalfLerp(area[area.Length-2], area[area.Length-1]);
                     //Scene.AddHexagonCenter(center);
@@ -420,12 +422,19 @@ public class GenerateScene : MonoBehaviour
         Scene.SortHexagonCenter();
 
         Scene.hexNum[] line;
+        Scene.hexNum[][] startOfLine;
         Scene.hexNum start, end;
         Scene.hexAxis startAxis, endAxis;
-        Scene.hexNum[] startOfLine = null;
-        Scene.hexNum[] startOfLine_1 = null;
-        Scene.hexNum[] startOfLine_2 = null;
         int angle;
+
+        //bool searchPortalStart = true, searchPortalEnd = false;
+        //GameObject doorIn=null, doorOut=null;
+        //Portal doorInScript=null, doorOutScript=null;
+        int pairedDoorNum = 3;
+        Portal[] doorInScripts = new Portal[pairedDoorNum];
+        Portal[] doorOutScripts = new Portal[pairedDoorNum];
+        int doorInCount = 0, doorOutCount = 0;
+        bool haveDoor = false;
 
         //Get the first element in hexCenter
         /*start = new Scene.hexNum{
@@ -453,6 +462,7 @@ public class GenerateScene : MonoBehaviour
         PlaceHexagon(line, hex[3], add_angle:true, angle:angle); //water */
 
         int total = Scene.longArea? 1:9;
+
         for(int k=0; k<total; k++)
         {
             for (int i=0; i<Scene.hexCenter[k].Length;i++)
@@ -466,55 +476,281 @@ public class GenerateScene : MonoBehaviour
 
                 if (end.num_x == -1) break; // reach end of center -> change to goal later
 
-                line = Hexagon.GetLineBetweenPointsOffset(start, end);
-                if (line!=null)
-                    startOfLine = PlaceHexagon(line, hex[1], add_angle:true, angle:angle); //sand
-                //Debug.Log(i+" "+line.Length);
-
-                int level = 1;
                 int distance = Hexagon.DistanceBetweenPointsOffset(start, end);
-                if (distance >= 16) level = 3;
-                if (distance >= 8) level = 2;
-                else if (distance >= 4) level = 1;
-
-                line = Hexagon.GetNoisyEdgesBetweenPointsOffset(start, end, level, 0.4f);
-                if (line!=null)
-                    startOfLine_1 = PlaceHexagon(line, hex[2], add_angle:true, angle:angle); //stone
+                startOfLine = ConnectAllLines(start, end, distance, angle);
                 
-                line = Hexagon.GetTwistedEdgesBetweenPointsOffset(start, end, 0.6f);
-                if (line!=null)
-                    startOfLine_2 = PlaceHexagon(line, hex[3], add_angle:true, angle:angle); //water
-                
-                //Debug.Assert(startOfLine.num_x != -1, "No start of line in ConnectAllHexagons: "+i);
-                //Debug.Log("Start: "+start.num_x+" "+start.num_z);
-                //Debug.Log("End: "+end.num_x+" "+end.num_z);
-                if (startOfLine!=null && startOfLine.Length!=0)
+                if (startOfLine[0]!=null && startOfLine[0].Length!=0)
                 {
                     int j = 0;
-                    while(j < startOfLine.Length)
+                    while(j < startOfLine[0].Length)
                     {
-                        bool placeSuccess = PlaceRoadSign(startOfLine[j++], angle);
+                        bool placeSuccess = PlaceRoadSign(startOfLine[0][j++], angle);
                         //Debug.Assert(placeSuccess, "Not successful when placing road sign: "+i);
                         if (placeSuccess) break;
                     }
 
-                    if (startOfLine_1!= null)
-                        Utils.Add(ref startOfLine, startOfLine_1);
-                    if (startOfLine_2!= null)
-                        Utils.Add(ref startOfLine, startOfLine_2);
+                    if (startOfLine[1]!= null)
+                        Utils.Add(ref startOfLine, startOfLine[1]);
+                    if (startOfLine[2]!= null)
+                        Utils.Add(ref startOfLine, startOfLine[2]);
                     
-                    InsertSpeedDownModule(startOfLine);
-                    InsertBombModule(startOfLine);
+                    InsertSpeedDownModule(startOfLine[0]);
+                    InsertBombModule(startOfLine[0]);
                     /*if (i%2 == 1) // Insert SpeedUp Module
                         InsertSpeedUpJumpModule(startOfLine, distance, angle, SpeedUp: true);
                     else    // Insert Jump Module
                         InsertSpeedUpJumpModule(startOfLine, distance, angle, SpeedUp: false);*/
                     if (i%2 == 1)   //Insert Jump Module
-                        InsertSpeedUpJumpModule(startOfLine, distance, angle, SpeedUp: false);
-                    InsertSpeedUpJumpModule(startOfLine, distance, angle, SpeedUp: true);
+                        InsertSpeedUpJumpModule(startOfLine[0], distance, angle, SpeedUp: false);
+                    InsertSpeedUpJumpModule(startOfLine[0], distance, angle, SpeedUp: true);
                 }
+
+                // Build subpaths and place door
+                if (!haveDoor && doorInCount < pairedDoorNum && doorInCount == doorOutCount)
+                {
+                    if (UnityEngine.Random.Range(0, 1f)<0.7f)
+                    {
+                        doorInScripts[doorInCount] = PlaceDoorIn(angle, start, distance);
+                        if (doorInScripts[doorInCount] != null)
+                        {
+                            //searchPortalStart = false;
+                            //searchPortalEnd = true;
+                            //Debug.Log("Place In");
+                            Debug.Log("place In at pattern i: "+i);
+                            doorInCount ++;
+                            haveDoor = true;
+                            continue;
+                        }
+                    }
+                }
+
+                if (!haveDoor && doorOutCount < pairedDoorNum && doorOutCount == (doorInCount-1))
+                {
+                    if (UnityEngine.Random.Range(0, 1f)<0.7f)
+                    {
+                        doorOutScripts[doorOutCount] = PlaceDoorOut(angle, end, distance);
+                        if (doorOutScripts[doorOutCount] != null)
+                        {
+                            //searchPortalEnd = false;
+                            //Debug.Log("Place Out");
+                            Debug.Log("place Out at pattern i: "+i);
+                            doorOutCount ++;
+                            haveDoor = true;
+                            continue;
+                        }
+                    }
+                }
+
+                if (haveDoor) haveDoor = false;
             }
         }
+
+        //Debug.Assert(doorInCount==doorOutCount, "In & Out doors number don't match");
+        int[] numArray = new int[doorOutCount];
+        for (int k=0; k<doorOutCount; k++)
+            numArray[k] = k;
+        numArray = Utils.GetRandomNum(numArray);
+        for (int k=0; k<doorOutCount; k++)
+            SetDoorPair(doorInScripts[k], doorOutScripts[numArray[k]]);
+        if (doorOutCount == doorInCount-1)
+            // fill the last doorIn
+            doorInScripts[doorInCount-1] = doorOutScripts[UnityEngine.Random.Range(0, doorOutCount)];
+    }
+
+    Portal PlaceDoorIn(int angle, Scene.hexNum start, int distance)
+    {
+        int PortalAngle = UnityEngine.Random.Range(30, 90);
+        int subAngle = PortalAngle>60?90:30;
+        int maxLength, length, num_x, num_z;
+        float angleTmp = 2f * Mathf.PI * PortalAngle / 360;
+        Scene.hexNum PortalPos;
+        Scene.hexNum[][] startLine;
+        Scene.hexAxis startAxis, endAxis;
+        GameObject doorIn;
+        Portal doorInScript;
+        //if (angle>0) PortalAngle = -PortalAngle;
+        
+        if (angle < 0)
+        {
+            // protalAngle > 0
+            maxLength = (int)Mathf.Min(
+                (Scene.areaHeight-start.num_x)/Mathf.Sin(angleTmp),
+                (Scene.areaWidth-start.num_z)/Mathf.Cos(angleTmp)
+                );
+            maxLength = Mathf.Min(maxLength, distance+distance/2);
+            length = UnityEngine.Random.Range(distance, distance+distance/2);
+            num_x = start.num_x + (int)(length*Mathf.Sin(angleTmp));
+            num_z = start.num_z + (int)(length*Mathf.Cos(angleTmp));
+        }
+        else {
+            maxLength = (int)Mathf.Min(
+                start.num_x/Mathf.Sin(angleTmp),
+                (Scene.areaWidth-start.num_z)/Mathf.Cos(angleTmp)
+                );
+            maxLength = Mathf.Min(maxLength, distance+distance/2);
+            length = UnityEngine.Random.Range(distance, distance+distance/2);
+            num_x = start.num_x - (int)(length*Mathf.Sin(angleTmp));
+            num_z = start.num_z + (int)(length*Mathf.Cos(angleTmp));
+            PortalAngle = -PortalAngle;
+            subAngle = -subAngle;
+        }
+        
+        if (!Scene.JudgeRectAreaOccupancy(num_x-1, num_z, 3, 1)) return null;
+        doorIn = PlaceSceneObject(num_x, num_z, 1, 1, Portal, angle: PortalAngle);
+        doorInScript = doorIn.GetComponent<Portal>();
+        doorInScript.inDoor = true;
+
+        PortalPos = new Scene.hexNum {
+            num_x = num_x,
+            num_z = num_z
+        };
+
+        startAxis = Hexagon.NumToAxis(start.num_x, start.num_z);
+        endAxis = Hexagon.NumToAxis(PortalPos.num_x, PortalPos.num_z);
+        int lineAngle = Hexagon.NearestAngleForCamera(startAxis, endAxis);
+
+        int subDistance = Hexagon.DistanceBetweenPointsOffset(start, PortalPos);
+        startLine = ConnectAllLines(start, PortalPos, subDistance, subAngle, subPath:true);
+        doorInScript.nearestHex = startLine[0][startLine[0].Length-1];
+        try{
+            doorInScript.forwardVector = Hexagon.CenterVectorBetweenTwoHex(startLine[0][startLine[0].Length-2], startLine[0][startLine[0].Length-1]).normalized;
+        }
+        catch (Exception e)
+        {
+            //Hexagon.CenterVectorBetweenTwoHex(start, startLine[0][startLine[0].Length-1]).normalized;
+            doorInScript.forwardVector = new Vector3(Mathf.Sin(2*Mathf.PI*lineAngle/360f), 0, Mathf.Cos(2*Mathf.PI*lineAngle/360f));
+        }
+
+        if (startLine[0]!=null && startLine[0].Length!=0)
+        {
+            int j = 0;
+            while(j < startLine[0].Length)
+            {
+                bool placeSuccess = PlaceRoadSign(startLine[0][j++], lineAngle);
+                //Debug.Assert(placeSuccess, "Not successful when placing road sign: "+i);
+                if (placeSuccess) break;
+            }
+        }
+        return doorInScript;
+    }
+
+    Portal PlaceDoorOut(int angle, Scene.hexNum end, int distance)
+    {
+        int PortalAngle = UnityEngine.Random.Range(30, 90);
+        int subAngle = PortalAngle>60?90:30;
+        int maxLength, length, num_x, num_z;
+        float angleTmp = 2f * Mathf.PI * PortalAngle / 360;
+        Scene.hexNum PortalPos;
+        Scene.hexNum[][] startLine;
+        Scene.hexAxis startAxis, endAxis;
+        GameObject doorOut;
+        Portal doorOutScript;
+
+        if (angle < 0)
+        {
+            maxLength = (int)Mathf.Min(
+                end.num_x/Mathf.Sin(angleTmp),
+                end.num_z/Mathf.Cos(angleTmp)
+                );
+            maxLength = Mathf.Min(maxLength, distance+distance/2);
+            length = UnityEngine.Random.Range(distance, distance+distance/2);
+            num_x = end.num_x - (int)(length*Mathf.Sin(angleTmp));
+            num_z = end.num_z - (int)(length*Mathf.Cos(angleTmp));
+        }
+        else {
+            maxLength = (int)Mathf.Min(
+                (Scene.areaHeight-end.num_x)/Mathf.Sin(angleTmp),
+                end.num_z/Mathf.Cos(angleTmp)
+                );
+            maxLength = Mathf.Min(maxLength, distance+distance/2);
+            length = UnityEngine.Random.Range(distance, distance+distance/2);
+            num_x = end.num_x + (int)(length*Mathf.Sin(angleTmp));
+            num_z = end.num_z - (int)(length*Mathf.Cos(angleTmp));
+            subAngle = -subAngle;
+        }
+
+        if (!Scene.JudgeRectAreaOccupancy(num_x-1, num_z, 3, 1)) return null;
+        doorOut = PlaceSceneObject(num_x, num_z, 1, 1, Portal, angle: subAngle);
+        doorOutScript = doorOut.GetComponent<Portal>();
+        doorOutScript.inDoor = false;
+        //doorOutScript.pairedDoor = doorInScript;
+        //doorInScript.pairedDoor = doorOutScript;
+
+        PortalPos = new Scene.hexNum {
+            num_x = num_x,
+            num_z = num_z
+        };
+
+        startAxis = Hexagon.NumToAxis(PortalPos.num_x, PortalPos.num_z);
+        endAxis = Hexagon.NumToAxis(end.num_x, end.num_z);
+        int lineAngle = Hexagon.NearestAngleForCamera(startAxis, endAxis);
+
+        int subDistance = Hexagon.DistanceBetweenPointsOffset(PortalPos, end);
+        startLine = ConnectAllLines(PortalPos, end, subDistance, subAngle, subPath:true);
+        doorOutScript.nearestHex = startLine[0][0];
+        try {
+            doorOutScript.forwardVector = Hexagon.CenterVectorBetweenTwoHex(startLine[0][0], startLine[0][1]).normalized;
+        }
+        catch (Exception e)
+        {
+            //Hexagon.CenterVectorBetweenTwoHex(startLine[0][0], end);
+            doorOutScript.forwardVector = new Vector3(Mathf.Sin(2*Mathf.PI*lineAngle/360f), 0, Mathf.Cos(2*Mathf.PI*lineAngle/360f));
+        }
+        //ReplaceObject(startLine[0][1], hex[5]);
+
+        // fill in remaining area
+        //int x_val=-1, z_val=-1;
+        Scene.hexNum hexN = startLine[0][1];
+        int dirAngle = Utils.getVectorAngle(Vector3.forward, doorOutScript.forwardVector);
+
+        for (int t=2; t<=5; t++)
+        {
+            hexN = Hexagon.GetHexByAngle(hexN, dirAngle);
+            //x_val = startLine[0][1].num_x*t - startLine[0][0].num_x*(t-1);
+            //z_val = startLine[0][1].num_z*t - startLine[0][0].num_z*(t-1);
+            //Utils.DebugDrawPoint(hexN, 0, Color.red);
+            PlaceHexagon(hexN.num_x, hexN.num_z, hex[0], place_coin:true);
+        }
+
+        if (lineAngle>0)
+            GenerateRandomArea(5, 5, 3, 4, 1, use_xz:true, static_x: hexN.num_x, static_z:hexN.num_z, considerOccupancy:false);
+        else
+            GenerateRandomArea(5, 5, 3, 4, 1, use_xz:true, static_x: hexN.num_x-5, static_z:hexN.num_z, considerOccupancy:false);
+        return doorOutScript;
+    }
+
+    void SetDoorPair(Portal doorInScript, Portal doorOutScript)
+    {
+        doorOutScript.pairedDoor = doorInScript;
+        doorInScript.pairedDoor = doorOutScript;
+    }
+
+    Scene.hexNum[][] ConnectAllLines(Scene.hexNum start, Scene.hexNum end, int distance, int angle, bool subPath=false)
+    {
+        Scene.hexNum[] line;
+        Scene.hexNum[][] startOfLine = new Scene.hexNum[3][];
+        for (int i=0; i<startOfLine.Length; i++)
+            startOfLine[i] = null;
+        line = Hexagon.GetLineBetweenPointsOffset(start, end);
+        if (line!=null)
+            startOfLine[0] = PlaceHexagon(line, hex[1], add_angle:true, angle:angle); //sand
+
+        if (subPath) return startOfLine;
+        
+        int level = 1;
+        if (distance >= 16) level = 3;
+        if (distance >= 8) level = 2;
+        else if (distance >= 4) level = 1;
+
+        line = Hexagon.GetNoisyEdgesBetweenPointsOffset(start, end, level, 0.4f);
+        if (line!=null)
+            startOfLine[1] = PlaceHexagon(line, hex[2], add_angle:true, angle:angle); //stone
+        
+        line = Hexagon.GetTwistedEdgesBetweenPointsOffset(start, end, 0.6f);
+        if (line!=null)
+            startOfLine[2] = PlaceHexagon(line, hex[3], add_angle:true, angle:angle); //water
+
+        return startOfLine;
     }
 
     void InsertSpeedUpJumpModule(Scene.hexNum[] line, int distance, int angle, bool SpeedUp)
@@ -882,7 +1118,7 @@ public class GenerateScene : MonoBehaviour
         return false;
     }
 
-    GameObject PlaceSceneObject(int x, int z, int height, int width, GameObject obj)
+    GameObject PlaceSceneObject(int x, int z, int height, int width, GameObject obj, int angle=0)
     {
         int num;
         Scene.hexAxis hexA;
@@ -892,9 +1128,9 @@ public class GenerateScene : MonoBehaviour
         hexA = Scene.GetRectAreaCenter(x, z, height, width);
         pos.x = hexA.axis_x - obj.GetComponent<Space>().bias_x;
         pos.z = hexA.axis_z - obj.GetComponent<Space>().bias_z;
-        pos.y = 0;
+        pos.y = obj.GetComponent<Space>().bias_y;
         num = Scene.GetOneDimensionVal(x, z);
-        Scene.map[num] = Instantiate(obj, pos, Quaternion.identity, transform);
+        Scene.map[num] = Instantiate(obj, pos, Quaternion.Euler(0, angle, 0), transform);
         return Scene.map[num];
     }
 

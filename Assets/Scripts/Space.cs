@@ -11,5 +11,6 @@ public class Space : MonoBehaviour
     //for road fence: center != rot center
     public float bias_x = 0;
     public float bias_z = 0;
+    public float bias_y = 0;
 
 }

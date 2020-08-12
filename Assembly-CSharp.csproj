@@ -45,6 +45,9 @@
      <Compile Include="Assets\ConeCollider\Script\ColliderTest.cs" />
      <Compile Include="Assets\ConeCollider\Script\ConeCollider.cs" />
      <Compile Include="Assets\Gems Ultimate Pack\Scripts\AnimationScript.cs" />
+     <Compile Include="Assets\Portal (AAA)\Script\NextPrefab.cs" />
+     <Compile Include="Assets\Portal (AAA)\Script\Rotation.cs" />
+     <Compile Include="Assets\Portal (AAA)\Script\UserCamera.cs" />
      <Compile Include="Assets\Samples\Cinemachine\2.6.0\Cinemachine Example Scenes\Scenes\3rdPersonWithAimMode\ActivateOnKeypress.cs" />
      <Compile Include="Assets\Samples\Cinemachine\2.6.0\Cinemachine Example Scenes\Scenes\CameraMagnets\CameraMagnetProperty.cs" />
      <Compile Include="Assets\Samples\Cinemachine\2.6.0\Cinemachine Example Scenes\Scenes\CameraMagnets\CameraMagnetTargetController.cs" />
@@ -80,10 +83,14 @@
      <Compile Include="Assets\Scripts\TerrainGenerate.cs" />
      <Compile Include="Assets\Scripts\Utils.cs" />
      <Compile Include="Assets\Scripts\WrongDirection.cs" />
+     <Compile Include="Assets\Scripts\Portal.cs" />
      <None Include="Assets\Materials\ParticleMaterials\UnlitVertexColour_Alpha.shader" />
      <None Include="Assets\ConeCollider\readme_en.txt" />
      <None Include="Assets\Gems Ultimate Pack\READ ME.txt" />
      <None Include="Assets\ConeCollider\readme_jp.txt" />
+     <None Include="Assets\Portal (AAA)\Shader\Particle.shader" />
+     <None Include="Assets\Portal (AAA)\Readme.txt" />
+     <None Include="Assets\Portal (AAA)\Shader\Distort.shader" />
     <Reference Include="UnityEngine">
         <HintPath>C:/Program Files/Unity/2019.4.3f1/Editor/Data/Managed/UnityEngine/UnityEngine.dll</HintPath>
     </Reference>
