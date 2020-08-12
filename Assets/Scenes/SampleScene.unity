@@ -2386,7 +2386,7 @@ MonoBehaviour:
   distanceAway: 3
   smooth: 5
   x_angle: 30
-  y_angle: -30
+  y_angle: 90
 --- !u!114 &466277967
 MonoBehaviour:
   m_ObjectHideFlags: 0

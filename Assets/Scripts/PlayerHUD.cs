@@ -56,6 +56,7 @@ public class PlayerHUD : MonoBehaviour
         character.animator.enabled = true;
         character.SetParticleSystem(0);
         Scene.gameStopped = false;
+        backGroundAudio.UnPause();
     }
 
     public void OnClick_RestartGame()
@@ -178,6 +179,7 @@ public class PlayerHUD : MonoBehaviour
     {
         gameStopPanel.SetActive(true);
         GameTextOff();
+        backGroundAudio.Pause();
     }
 
     public void GameTextOn()

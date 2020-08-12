@@ -174,7 +174,7 @@ GameObject:
   - component: {fileID: 4033574301498584300}
   - component: {fileID: 6860597975881342849}
   m_Layer: 0
-  m_Name: finalCheckpoint 1
+  m_Name: finalCheckpoint
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -261,7 +261,7 @@ BoxCollider:
   m_IsTrigger: 1
   m_Enabled: 1
   serializedVersion: 2
-  m_Size: {x: 0.99999994, y: 0.4, z: 1.1547003}
+  m_Size: {x: 1.2, y: 0.4, z: 1.2}
   m_Center: {x: 0, y: 0.22, z: 0}
 --- !u!114 &4033574301498584300
 MonoBehaviour:
@@ -279,6 +279,7 @@ MonoBehaviour:
   width: 3
   bias_x: 0
   bias_z: 0
+  bias_y: 0
 --- !u!114 &6860597975881342849
 MonoBehaviour:
   m_ObjectHideFlags: 0

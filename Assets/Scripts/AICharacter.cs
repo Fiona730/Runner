@@ -74,11 +74,12 @@ public class AICharacter : Character
                         dieParticle.Play();
                         player.diamondCount -= 1;
                         AudioSource.PlayClipAtPoint(playerDieClip, transform.position);
+
                         // AI Change Place
                         Vector3 distance = Reborn1 - collision.gameObject.transform.position;
                         if (Mathf.Sqrt(distance.sqrMagnitude) > 3*Scene.xDistanceHex)
-                            transform.position = Reborn1;
-                        else transform.position = Reborn2;
+                            Invoke("AIReborn1", 0.1f);
+                        else Invoke("AIReborn2", 0.1f);
                     }
                     else {
                         player.particle[4].Play();
@@ -101,6 +102,16 @@ public class AICharacter : Character
                 playerScript.coinCount += 10;
             }
         }
+    }
+
+    void AIReborn1()
+    {
+        transform.position = Reborn1;
+    }
+
+    void AIReborn2()
+    {
+        transform.position = Reborn2;
     }
 
     public void Initialize()
